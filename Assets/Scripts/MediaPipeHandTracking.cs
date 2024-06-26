@@ -1,16 +1,13 @@
-using OpenCVForUnity.DnnModule;
 using OpenCVForUnityExample.DnnModel;
-using OpenCVForUnity.UnityUtils;
-using OpenCVForUnity.ImgcodecsModule;
 using OpenCVForUnity.ImgprocModule;
+using OpenCVForUnity.UnityUtils;
+using OpenCVForUnity.UnityUtils.Helper;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Unity.Barracuda;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using OpenCVForUnity.CoreModule;
-using OpenCVForUnity.UnityUtils.Helper;
+
 
 
 [RequireComponent(typeof(WebCamTextureToMatHelper))]
@@ -60,6 +57,8 @@ public class HandTracking : MonoBehaviour
         //webCamTexture = new WebCamTexture(requestedCameraSize.x, requestedCameraSize.y, cameraFPS);
         //webCamTexture.Play();
         webCamTextureToMatHelper = gameObject.GetComponent<WebCamTextureToMatHelper>();
+        webCamTextureToMatHelper.Initialize();
+
         StartTrackingHand();
     }
 
