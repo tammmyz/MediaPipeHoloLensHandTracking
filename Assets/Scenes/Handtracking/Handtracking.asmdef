@@ -1,0 +1,6 @@
+{
+	"name": "Handtracking",
+	"references": [
+		"EnoxSoftware.OpenCVForUnity"
+	]
+}

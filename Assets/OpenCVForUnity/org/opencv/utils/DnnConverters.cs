@@ -1,5 +1,3 @@
-#if !UNITY_WSA_10_0
-
 using OpenCVForUnity.CoreModule;
 using System.Collections.Generic;
 
@@ -46,4 +44,3 @@ namespace OpenCVForUnity.UtilsModule
         }
     }
 }
-#endif
