@@ -60,6 +60,27 @@
         "com.microsoft.mixedreality.toolkit.foundation": "2.8.3"
       }
     },
+    "com.realitycollective.service-framework": {
+      "version": "1.0.8-pre.7",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.ugui": "1.0.0",
+        "com.realitycollective.utilities": "1.0.12",
+        "com.unity.test-framework": "1.1.33"
+      },
+      "url": "https://package.openupm.com"
+    },
+    "com.realitycollective.utilities": {
+      "version": "1.0.12",
+      "depth": 1,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.modules.unitywebrequest": "1.0.0",
+        "com.unity.editorcoroutines": "1.0.0"
+      },
+      "url": "https://package.openupm.com"
+    },
     "com.unity.barracuda": {
       "version": "3.0.0",
       "depth": 0,

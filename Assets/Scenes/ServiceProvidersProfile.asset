@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e313293fba4e5a946adc1cc90678c91c, type: 3}
+  m_Name: ServiceProvidersProfile
+  m_EditorClassIdentifier: 
+  configurations:
+  - instancedType:
+      reference: 73f0c0b8-0d21-4501-b494-d2f07fadf667
+    name: Processor
+    priority: 0
+    profile: {fileID: 11400000, guid: e46d9655183a69447a63692b4209f53f, type: 2}
+    platformEntries:
+      runtimePlatforms:
+      - reference: 16a3125f-31d5-4ec6-a120-8be889a74d27
+  initializeOnPlay: 1
+  doNotDestroyServiceManagerOnLoad: 1
+  sceneServiceConfiguration: []
