@@ -14,13 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   configurations:
   - instancedType:
-      reference: 73f0c0b8-0d21-4501-b494-d2f07fadf667
-    name: Processor
+      reference: 
+    name: New Configuration 0
     priority: 0
-    profile: {fileID: 11400000, guid: e46d9655183a69447a63692b4209f53f, type: 2}
+    profile: {fileID: 0}
     platformEntries:
-      runtimePlatforms:
-      - reference: 16a3125f-31d5-4ec6-a120-8be889a74d27
+      runtimePlatforms: []
   initializeOnPlay: 1
   doNotDestroyServiceManagerOnLoad: 1
   sceneServiceConfiguration: []

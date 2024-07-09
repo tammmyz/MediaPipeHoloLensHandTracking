@@ -15,7 +15,7 @@ using RealityCollective.ServiceFramework;
 using UnityEditor.MPE;
 
 [RequireComponent(typeof(WebCamTextureToMatHelper))]
-public class HandTracking : MonoBehaviour
+public class HandTracking1 : MonoBehaviour
 {
     public bool showSkeleton;
 
