@@ -591,6 +591,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1262598833}
+  - component: {fileID: 1262598834}
   m_Layer: 0
   m_Name: HologramCollection
   m_TagString: Untagged
@@ -614,6 +615,22 @@ Transform:
   - {fileID: 2074062492}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1262598834
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1262598832}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 666d31d8bf2a8804fb24f91d274c4f69, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  requestedCameraSize: {x: 896, y: 504}
+  cameraFPS: 4
+  handImageSize: {x: 320, y: 256}
+  debugRenderer: {fileID: 2074062490}
 --- !u!1 &1505403043
 GameObject:
   m_ObjectHideFlags: 0
@@ -748,7 +765,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2074062487}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0bf1b4942f1513747a82f3b44a1a0e3f, type: 3}
   m_Name: 

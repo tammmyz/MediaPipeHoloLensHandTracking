@@ -14,12 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   configurations:
   - instancedType:
-      reference: 
-    name: New Configuration 0
+      reference: 21b8764c-f9e8-4ce2-8c86-d22330602ede
+    name: Hand Tracker
     priority: 0
-    profile: {fileID: 0}
+    profile: {fileID: 11400000, guid: 83b37e7e29d815045a4947fd6b59a308, type: 2}
     platformEntries:
-      runtimePlatforms: []
+      runtimePlatforms:
+      - reference: 5a504905-0968-4b2f-a537-7fe804f1bd8e
+      - reference: 16a3125f-31d5-4ec6-a120-8be889a74d27
   initializeOnPlay: 1
   doNotDestroyServiceManagerOnLoad: 1
   sceneServiceConfiguration: []
