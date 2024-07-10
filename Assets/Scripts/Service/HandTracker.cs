@@ -1,5 +1,6 @@
 using HandTracking.Interfaces;
-
+using Microsoft.MixedReality.Toolkit;
+using OpenCVForUnityExample.DnnModel;
 using RealityCollective.ServiceFramework.Definitions;
 using RealityCollective.ServiceFramework.Interfaces;
 using RealityCollective.ServiceFramework.Services;
@@ -17,14 +18,17 @@ namespace HandTracking
         private IWorker worker;
 
         private readonly HandTrackerProfile profile;
+        private MediaPipePalmDetector palmDetector;
         public HandTracker(string name, uint priority, HandTrackerProfile profile)
             : base(name, priority)
         {
             this.profile = profile;
+            this.palmDetector = profile.PalmDetector;
         }
 
         public async Task<List<int>> DetectPalm(Texture2D texture)
         {
+            Debug.Log("Palm detected - dummy");
             List<int> result = await GetDummyTask();
             return result;
         }

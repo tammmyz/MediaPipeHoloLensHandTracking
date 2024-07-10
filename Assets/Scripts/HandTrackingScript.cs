@@ -18,8 +18,9 @@ public class HandTrackingScript : MonoBehaviour
     private int cameraFPS = 4;
 
     [SerializeField]
-    private Vector2Int handImageSize = new(320, 256);
+    private Vector2Int handImageSize = new(192,108);
 
+    private int inputSize = 192;
     private Vector2Int actualCameraSize;
 
     private WebCamTexture webCamTexture;
@@ -37,13 +38,15 @@ public class HandTrackingScript : MonoBehaviour
         webCamTexture.Play();
         StartTrackingHandAsync();
     }
+
     private async Task StartTrackingHandAsync()
     {
         await Task.Delay(1000);
         Debug.Log("Start StartTrackingHandAsync");
 
         actualCameraSize = new Vector2Int(webCamTexture.width, webCamTexture.height);
-        var renderTexture = new RenderTexture(webCamTexture.width, webCamTexture.height, 24);
+        handImageSize = getHandImageSize(webCamTexture.width, webCamTexture.height);
+        var renderTexture = new RenderTexture(handImageSize.x, handImageSize.y, 24);
         if (debugRenderer != null && debugRenderer.gameObject.activeInHierarchy)
         {
             debugRenderer.material.mainTexture = renderTexture;
@@ -64,6 +67,14 @@ public class HandTrackingScript : MonoBehaviour
 
             Destroy(texture);
         }
+    }
+
+    private Vector2Int getHandImageSize(int actualCameraWidth, int actualCameraHeight)
+    {
+        // Scale image to fit input size of the model
+        int newHeight = inputSize * actualCameraHeight / actualCameraWidth;
+        handImageSize = new(inputSize, newHeight);
+        return handImageSize;
     }
 
     private Texture2D ToTexture2D(RenderTexture rTex)

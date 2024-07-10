@@ -1,4 +1,5 @@
 
+using OpenCVForUnityExample.DnnModel;
 using RealityCollective.ServiceFramework.Definitions;
 using RealityCollective.ServiceFramework.Interfaces;
 using Unity.Barracuda;
@@ -10,7 +11,7 @@ namespace HandTracking
     public class HandTrackerProfile : BaseServiceProfile<IServiceModule>
     {
         [SerializeField]
-        private NNModel palmDetector;
-        public NNModel PalmDetector => palmDetector;
+        private MediaPipePalmDetector palmDetector;
+        public MediaPipePalmDetector PalmDetector => palmDetector;
     }
 }
