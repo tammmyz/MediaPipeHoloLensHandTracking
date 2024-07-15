@@ -8,6 +8,7 @@ namespace HandTracking.Interfaces
 {
     public interface IHandTracker : IService
     {
-        Task<List<int>> DetectPalm(Texture2D texture);
+        Texture2D preprocess(Texture2D texture);
+        Task<int> DetectPalms(Texture2D texture);
     }
 }

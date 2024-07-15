@@ -3,7 +3,7 @@ using RealityCollective.ServiceFramework.Services;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Unity.Barracuda;
+using Unity.Sentis;
 using UnityEngine;
 using UnityEngine.XR.ARSubsystems;
 
@@ -18,7 +18,7 @@ public class HandTrackingScript : MonoBehaviour
     private int cameraFPS = 4;
 
     [SerializeField]
-    private Vector2Int handImageSize = new(192,108);
+    private Vector2Int handImageSize = new(192, 108);
 
     private int inputSize = 192;
     private Vector2Int actualCameraSize;
