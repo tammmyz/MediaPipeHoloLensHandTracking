@@ -467,7 +467,7 @@ MonoBehaviour:
   handTexture: {fileID: 2800000, guid: 2763a29401153dd40ba6266fa0ac7673, type: 3}
   debugRenderer1: {fileID: 1505403045}
   debugRenderer2: {fileID: 2128364446}
-  modelOnnx: {fileID: 5022602860645237092, guid: 1b107bbb456c06a41a5c90d414913a79, type: 3}
+  modelOnnx: {fileID: 5022602860645237092, guid: 19254e76d5d1d6342b956a266b94044d, type: 3}
 --- !u!4 &790127458
 Transform:
   m_ObjectHideFlags: 0
@@ -976,14 +976,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0bf1b4942f1513747a82f3b44a1a0e3f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  showSkeleton: 0
-  palmDetector: {fileID: 5022602860645237092, guid: 44c777b19882eec47be3d5efa6549709, type: 3}
-  requestedCameraSize: {x: 896, y: 504}
-  debugRenderer: {fileID: 2074062490}
-  cameraFPS: 4
-  handImageSize: {x: 320, y: 256}
-  profile: {fileID: 11400000, guid: e46d9655183a69447a63692b4209f53f, type: 2}
-  textureDebugger: {fileID: 1505403045}
 --- !u!64 &2074062489
 MeshCollider:
   m_ObjectHideFlags: 0

@@ -133,6 +133,7 @@ public class MediaPipePalmDetector
         //}
         //Tensor inputTensor = new Tensor(1, 192, 192, 3, floatArray);
         TensorFloat inputTensor = TextureConverter.ToTensor(texture);
+        inputTensor.MakeReadable();
         Debug.Log($"input row 0: {inputTensor[0,0,0,0]} {inputTensor[0, 0, 1, 0]} {inputTensor[0, 0, 2, 0]} {inputTensor[0, 0, 3, 0]}");
         Debug.Log($"input row 50: {inputTensor[0, 50, 0, 0]} {inputTensor[0, 50, 1, 0]} {inputTensor[0, 50, 2, 0]} {inputTensor[0, 50, 3, 0]}");
         //Tensor inputTensor = new Tensor(1, 192, 192, 3);

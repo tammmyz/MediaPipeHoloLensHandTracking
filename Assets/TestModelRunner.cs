@@ -81,5 +81,11 @@ public class TestModelRunner : MonoBehaviour
         return result;
     }
 
-
+    private void OnDestroy()
+    {
+        if (handTracker != null)
+        {
+            handTracker.Dispose();
+        }
+    }
 }
