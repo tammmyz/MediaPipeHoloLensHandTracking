@@ -13,4 +13,4 @@ MonoBehaviour:
   m_Name: HandTrackerProfile
   m_EditorClassIdentifier: 
   configurations: []
-  palmDetector: {fileID: 5022602860645237092, guid: 44c777b19882eec47be3d5efa6549709, type: 3}
+  palmDetectorAsset: {fileID: 5022602860645237092, guid: 1b107bbb456c06a41a5c90d414913a79, type: 3}

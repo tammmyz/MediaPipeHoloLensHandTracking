@@ -24,4 +24,5 @@ MonoBehaviour:
       - reference: 16a3125f-31d5-4ec6-a120-8be889a74d27
   initializeOnPlay: 1
   doNotDestroyServiceManagerOnLoad: 1
-  sceneServiceConfiguration: []
+  sceneServiceConfiguration:
+  - profile: {fileID: 11400000, guid: f7fc65e6ad6644d49bd63d148fa04b89, type: 2}
