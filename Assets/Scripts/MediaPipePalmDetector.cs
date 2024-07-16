@@ -2,14 +2,11 @@ using HandTracking;
 using OpenCVForUnity.CoreModule;
 using OpenCVForUnity.ImgprocModule;
 using OpenCVForUnity.UnityUtils;
-using System;
 using System.Collections.Generic;
-using System.Text;
 using UnityEngine;
 using Unity.Sentis;
 using System.Threading.Tasks;
-using System.Runtime.CompilerServices;
-using UnityEngine.Rendering.VirtualTexturing;
+using OpenCVRange = OpenCVForUnity.CoreModule.Range;
 
 /// <summary>
 /// Referring to https://github.com/opencv/opencv_zoo/tree/main/models/palm_detection_mediapipe
@@ -109,86 +106,89 @@ public class MediaPipePalmDetector
 
     public async Task<int> DetectPalms(Texture2D texture)
     {
-        //Color32[] pixels = texture.GetPixels32();
-        //float[] floatArray = new float[texture.width * texture.height * 3];
-        //for (int y = 0; y < texture.height; y++)
-        //{
-        //    for (int x = 0; x < texture.width; x++)
-        //    {
-        //        int pixelIndex = y * texture.width + x;
-        //        Color32 pixel = pixels[pixelIndex];
-
-        //        // Channels-last: [height, width, channels]
-        //        floatArray[pixelIndex * 3 + 0] = pixel.r / 255.0f;
-        //        floatArray[pixelIndex * 3 + 1] = pixel.g / 255.0f;
-        //        floatArray[pixelIndex * 3 + 2] = pixel.b / 255.0f;
-        //    }
-        //}
-
-        //for (int i = 0; i < pixels.Length; i++)
-        //{
-        //    floatArray[i * 3] = pixels[i].r;
-        //    floatArray[i * 3 + 1] = pixels[i].g;
-        //    floatArray[i * 3 + 2] = pixels[i].b;
-        //}
-        //Tensor inputTensor = new Tensor(1, 192, 192, 3, floatArray);
         TensorFloat inputTensor = TextureConverter.ToTensor(texture);
         inputTensor.MakeReadable();
         Debug.Log($"input row 0: {inputTensor[0,0,0,0]} {inputTensor[0, 0, 1, 0]} {inputTensor[0, 0, 2, 0]} {inputTensor[0, 0, 3, 0]}");
         Debug.Log($"input row 50: {inputTensor[0, 50, 0, 0]} {inputTensor[0, 50, 1, 0]} {inputTensor[0, 50, 2, 0]} {inputTensor[0, 50, 3, 0]}");
-        //Tensor inputTensor = new Tensor(1, 192, 192, 3);
         var shape = inputTensor.shape;
         Debug.Log($"input tensor shape: [{string.Join(',', shape)}], {inputTensor}");
         await Task.Delay(32);
 
-        //var outputTensor = await ForwardAsync(worker, inputTensor);
-        var outputTensor = ForwardSync(worker, inputTensor);
+        var outputData = await ForwardAsync(worker, inputTensor);
+        //var outputTensor = ForwardSync(worker, inputTensor);
         inputTensor.Dispose();
-        var id = outputTensor.shape[0];
-        shape = outputTensor.shape;
-        Debug.Log($"output tensor shape: [{string.Join(',', shape)}]");
         await Task.Delay(32);
-        outputTensor.Dispose();
-        return id;
+
+        List<Mat> outputBlob = PalmData2MatList(outputData);
+        Debug.Log($"mat:\n{outputBlob}");
+        Mat processedMat = postprocess(outputBlob);
+        return 0;
+    }
+
+    public List<Mat> PalmData2MatList(PalmData palmData)
+    {
+        var lm = new List<Mat>();
+        for (int i = 0; i < palmData.outputs.Count; i++) 
+        {
+            Mat mat = new Mat(
+                palmData.dimensions[i][0],
+                palmData.dimensions[i][1],
+                palmData.types[i]
+            );
+            mat.put(0, 0, palmData.outputs[i]);
+            lm.Add(mat);
+        }
+        return lm;
     }
 
     // Nicked from https://github.com/Unity-Technologies/barracuda-release/issues/236#issue-1049168663
-    public async Task<Tensor> ForwardAsync(IWorker modelWorker, Tensor inputs)
+    public async Task<PalmData> ForwardAsync(IWorker modelWorker, TensorFloat inputs)
     {
         Debug.Log("starting forward async");
         var executor = modelWorker.StartManualSchedule(inputs);
         var it = 0;
-        Debug.Log("iteration 0");
+        //Debug.Log("iteration 0");
         bool hasMoreWork;
         do
         {
             hasMoreWork = executor.MoveNext();
             if (++it % 20 == 0)
             {
-                Debug.Log("flushing");
                 modelWorker.FlushSchedule();
-                Debug.Log("delaying");
                 await Task.Delay(32);
             }
-            Debug.Log($"iteration {it}]\thasMoreWork: {hasMoreWork}");
+            //Debug.Log($"iteration {it}]\thasMoreWork: {hasMoreWork}");
         } while (hasMoreWork);
-
-        return modelWorker.PeekOutput();
+        var lm = new List<float[]>();
+        
+        var outputData_1 = modelWorker.PeekOutput("Identity") as TensorFloat;
+        var outputData_2 = modelWorker.PeekOutput("Identity_1") as TensorFloat;
+        PalmData palmData = new PalmData(outputData_1, outputData_2);
+        outputData_1.Dispose();
+        outputData_2.Dispose();
+        return palmData;
     }
 
-    public Tensor ForwardSync(IWorker modelWorker, Tensor inputs)
+    public List<float[]> ForwardSync(IWorker modelWorker, TensorFloat inputs)
     {
         try
         {
             Debug.Log("Starting forward sync");
             modelWorker.Execute(inputs);
             Debug.Log("Inference complete");
-            return modelWorker.PeekOutput();
+            var lm = new List<float[]>();
+            var outputData_1 = modelWorker.PeekOutput("Identity") as TensorFloat;
+            var outputData_2 = modelWorker.PeekOutput("Identity_1") as TensorFloat;
+            outputData_1.Dispose();
+            outputData_2.Dispose();
+            lm.Add(outputData_1.ToReadOnlyArray());
+            lm.Add(outputData_2.ToReadOnlyArray());
+            return lm;
         }
         catch (System.Exception ex)
         {
             Debug.LogError($"Error during inference: {ex.Message}");
-            return inputs;
+            return new List<float[]>();
         }
         //Debug.Log("Starting forward sync");
         //modelWorker.Execute(inputs);
@@ -196,11 +196,117 @@ public class MediaPipePalmDetector
         //return modelWorker.PeekOutput();
     }
 
-    public Mat toMat(Texture2D texture)
+    protected virtual Mat postprocess(List<Mat> output_blob)
     {
-        Mat mat = new Mat(texture.height, texture.width, CvType.CV_8UC4, new Scalar(0, 0, 0, 255));
-        Utils.fastTexture2DToMat(texture, mat);
-        return mat;
+        int num = output_blob[0].size(1);
+        Debug.Log($"num: {num}");
+        Debug.Log($"output_blob: {output_blob[0].dump()}");
+        Mat output_blob_1_numx1 = output_blob[1].reshape(1, num);
+        Mat score = output_blob_1_numx1.colRange(new OpenCVRange(0, 1));
+
+        Mat output_blob_0_numx18 = output_blob[0].reshape(1, num);
+        Mat box_delta = output_blob_0_numx18.colRange(new OpenCVRange(0, 4));
+        Mat landmark_delta = output_blob_0_numx18.colRange(new OpenCVRange(4, 18));
+
+        // get scores
+        Core.multiply(score, Scalar.all(1.0), score, -1.0);
+        Core.exp(score, score);
+        Core.add(score, Scalar.all(1.0), score);
+        Core.divide(1.0, score, score);
+
+        // get boxes
+        Mat cxy_delta = box_delta.colRange(new OpenCVRange(0, 2));
+        Mat _cxy_delta_numx1_c2 = cxy_delta.reshape(2, cxy_delta.rows());
+        Core.divide(_cxy_delta_numx1_c2, new Scalar(input_size.width, input_size.height), _cxy_delta_numx1_c2);
+        Mat wh_delta = box_delta.colRange(new OpenCVRange(2, 4));
+        Mat _wh_delta_numx1_c2 = wh_delta.reshape(2, wh_delta.rows());
+        Core.divide(_wh_delta_numx1_c2, new Scalar(input_size.width, input_size.height), _wh_delta_numx1_c2);
+
+        if (boxesMat == null)
+            boxesMat = new Mat(num, 4, CvType.CV_32FC1);
+
+        Mat xy1 = boxesMat.colRange(new OpenCVRange(0, 2));
+        Mat xy2 = boxesMat.colRange(new OpenCVRange(2, 4));
+
+        Core.divide(wh_delta, new Scalar(2.0), wh_delta);
+
+        Core.subtract(cxy_delta, wh_delta, xy1);
+        Core.add(xy1, anchors, xy1);
+
+        Core.add(cxy_delta, wh_delta, xy2);
+        Core.add(xy2, anchors, xy2);
+
+        // NMS
+        if (boxes_m_c4 == null)
+            boxes_m_c4 = new Mat(num, 1, CvType.CV_64FC4);
+        if (confidences_m == null)
+            confidences_m = new Mat(num, 1, CvType.CV_32FC1);
+
+        if (boxes == null)
+            boxes = new MatOfRect2d(boxes_m_c4);
+        if (confidences == null)
+            confidences = new MatOfFloat(confidences_m);
+
+        Mat boxes_m_c1 = boxes_m_c4.reshape(1, num);
+        boxesMat.convertTo(boxes_m_c1, CvType.CV_64F);
+        score.copyTo(confidences_m);
+        MatOfInt indices = new MatOfInt();
+        // NEED TO USE DIFFERENT NMS
+        //Dnn.NMSBoxes(boxes, confidences, score_threshold, nms_threshold, indices, 1f, topK);
+
+        // get landmarks
+        Mat results = new Mat(indices.rows(), 19, CvType.CV_32FC1);
+
+        for (int i = 0; i < indices.total(); ++i)
+        {
+            int idx = (int)indices.get(i, 0)[0];
+
+            float[] bbox_arr = new float[4];
+            boxesMat.get(idx, 0, bbox_arr);
+            results.put(i, 0, bbox_arr);
+
+            float[] confidence_arr = new float[1];
+            confidences.get(idx, 0, confidence_arr);
+            results.put(i, 18, confidence_arr);
+
+            float[] landmarks_arr = new float[14];
+            landmark_delta.get(idx, 0, landmarks_arr);
+            float[] anchors_arr = new float[2];
+            anchors.get(idx, 0, anchors_arr);
+
+            for (int j = 0; j < 14; ++j)
+            {
+                if (j % 2 == 0)
+                {
+                    landmarks_arr[j] /= (float)input_size.width;
+                    landmarks_arr[j] += anchors_arr[0];
+                }
+                else
+                {
+                    landmarks_arr[j] /= (float)input_size.height;
+                    landmarks_arr[j] += anchors_arr[1];
+                }
+            }
+
+            results.put(i, 4, landmarks_arr);
+        }
+
+        indices.Dispose();
+
+        // [
+        //   [bbox_coords, landmarks_coords, score]
+        //   ...
+        //   [bbox_coords, landmarks_coords, score]
+        // ]
+        return results;
+    }
+
+    public void Destroy()
+    {
+        if (worker != null)
+        {
+            worker.Dispose();
+        }
     }
 
     protected virtual Mat load_anchors()

@@ -51,5 +51,10 @@ namespace HandTracking
         //    List<int> dummyList = new List<int> { 1, 2, 3, 4, 5 };
         //    return Task.FromResult(dummyList);
         //}
+
+        public override void Destroy()
+        {
+            
+        }
     }
 }
