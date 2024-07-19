@@ -7,6 +7,8 @@ using UnityEngine;
 using Unity.Sentis;
 using System.Threading.Tasks;
 using OpenCVRange = OpenCVForUnity.CoreModule.Range;
+using System.Text;
+using Rect = OpenCVForUnity.CoreModule.Rect;
 
 /// <summary>
 /// Referring to https://github.com/opencv/opencv_zoo/tree/main/models/palm_detection_mediapipe
@@ -104,7 +106,7 @@ public class MediaPipePalmDetector
         return paddedTex;
     }
 
-    public async Task<int> DetectPalms(Texture2D texture)
+    public async Task<int> DetectPalms(Texture2D texture, Renderer debugRenderer)
     {
         TensorFloat inputTensor = TextureConverter.ToTensor(texture);
         inputTensor.MakeReadable();
@@ -115,13 +117,17 @@ public class MediaPipePalmDetector
         await Task.Delay(32);
 
         var outputData = await ForwardAsync(worker, inputTensor);
-        //var outputTensor = ForwardSync(worker, inputTensor);
+        //var outputData = ForwardSync(worker, inputTensor);
         inputTensor.Dispose();
         await Task.Delay(32);
 
         List<Mat> outputBlob = PalmData2MatList(outputData);
         Debug.Log($"mat:\n{outputBlob}");
         Mat processedMat = postprocess(outputBlob);
+        Debug.Log($"mat post processing: {processedMat.size()}\n{processedMat.dump()}");
+        Texture2D debug3 = new Texture2D(192, 192);
+        Utils.fastMatToTexture2D(processedMat, debug3);
+        debugRenderer.material.mainTexture = debug3;
         return 0;
     }
 
@@ -158,9 +164,7 @@ public class MediaPipePalmDetector
                 await Task.Delay(32);
             }
             //Debug.Log($"iteration {it}]\thasMoreWork: {hasMoreWork}");
-        } while (hasMoreWork);
-        var lm = new List<float[]>();
-        
+        } while (hasMoreWork);        
         var outputData_1 = modelWorker.PeekOutput("Identity") as TensorFloat;
         var outputData_2 = modelWorker.PeekOutput("Identity_1") as TensorFloat;
         PalmData palmData = new PalmData(outputData_1, outputData_2);
@@ -169,7 +173,7 @@ public class MediaPipePalmDetector
         return palmData;
     }
 
-    public List<float[]> ForwardSync(IWorker modelWorker, TensorFloat inputs)
+    public PalmData ForwardSync(IWorker modelWorker, TensorFloat inputs)
     {
         try
         {
@@ -179,16 +183,15 @@ public class MediaPipePalmDetector
             var lm = new List<float[]>();
             var outputData_1 = modelWorker.PeekOutput("Identity") as TensorFloat;
             var outputData_2 = modelWorker.PeekOutput("Identity_1") as TensorFloat;
+            PalmData palmData = new PalmData(outputData_1, outputData_2);
             outputData_1.Dispose();
             outputData_2.Dispose();
-            lm.Add(outputData_1.ToReadOnlyArray());
-            lm.Add(outputData_2.ToReadOnlyArray());
-            return lm;
+            return palmData;
         }
         catch (System.Exception ex)
         {
             Debug.LogError($"Error during inference: {ex.Message}");
-            return new List<float[]>();
+            return new PalmData();
         }
         //Debug.Log("Starting forward sync");
         //modelWorker.Execute(inputs);
@@ -200,13 +203,16 @@ public class MediaPipePalmDetector
     {
         int num = output_blob[0].size(1);
         Debug.Log($"num: {num}");
-        Debug.Log($"output_blob: {output_blob[0].dump()}");
+        Debug.Log($"output_blob: {output_blob[0].size()}");
         Mat output_blob_1_numx1 = output_blob[1].reshape(1, num);
         Mat score = output_blob_1_numx1.colRange(new OpenCVRange(0, 1));
+        Debug.Log($"score: {score.size()}");
 
         Mat output_blob_0_numx18 = output_blob[0].reshape(1, num);
         Mat box_delta = output_blob_0_numx18.colRange(new OpenCVRange(0, 4));
         Mat landmark_delta = output_blob_0_numx18.colRange(new OpenCVRange(4, 18));
+        Debug.Log($"box_delta: {box_delta.size()}");
+        Debug.Log($"landmark_delta: {landmark_delta.size()}");
 
         // get scores
         Core.multiply(score, Scalar.all(1.0), score, -1.0);
@@ -251,8 +257,25 @@ public class MediaPipePalmDetector
         boxesMat.convertTo(boxes_m_c1, CvType.CV_64F);
         score.copyTo(confidences_m);
         MatOfInt indices = new MatOfInt();
-        // NEED TO USE DIFFERENT NMS
-        //Dnn.NMSBoxes(boxes, confidences, score_threshold, nms_threshold, indices, 1f, topK);
+        Debug.Log($"boxes: {boxes.size()}");
+        Debug.Log($"confidences: {confidences.size()}");
+        Debug.Log($"score_threshold: {score_threshold}");
+        Debug.Log($"nms_threshold: {nms_threshold}");
+        Debug.Log($"topK: {topK}");
+
+        List<Rect> boxList = new List<Rect>();
+        List<float> confidenceList = new List<float>();
+        for (int i = 0; i < num; i++)
+        {
+            double[] boxData = new double[4];
+            boxes_m_c1.get(i, 0, boxData);
+            boxList.Add(new Rect((int)boxData[0], (int)boxData[1], (int)boxData[2], (int)boxData[3]));
+
+            float[] confidenceData = new float[1];
+            confidences_m.get(i, 0, confidenceData);
+            confidenceList.Add(confidenceData[0]);
+        }
+        ApplyNMS(boxList, confidenceList, score_threshold, nms_threshold, indices, 1f, topK);
 
         // get landmarks
         Mat results = new Mat(indices.rows(), 19, CvType.CV_32FC1);
@@ -299,6 +322,123 @@ public class MediaPipePalmDetector
         //   [bbox_coords, landmarks_coords, score]
         // ]
         return results;
+    }
+
+    public static void ApplyNMS(List<Rect> boxes, List<float> confidences, float scoreThreshold, float nmsThreshold, MatOfInt indices, float eta = 1.0f, int topK = 0)
+    {
+        // Filter boxes and confidences based on score threshold
+        List<int> filteredIndices = new List<int>();
+        for (int i = 0; i < confidences.Count; i++)
+        {
+            if (confidences[i] > scoreThreshold)
+            {
+                filteredIndices.Add(i);
+            }
+        }
+
+        // Sort the filtered indices based on the confidences in descending order
+        filteredIndices.Sort((i1, i2) => confidences[i2].CompareTo(confidences[i1]));
+
+        // If topK is set and less than the number of filtered indices, keep only the topK elements
+        if (topK > 0 && topK < filteredIndices.Count)
+        {
+            filteredIndices = filteredIndices.GetRange(0, topK);
+        }
+
+        List<int> finalIndices = new List<int>();
+        while (filteredIndices.Count > 0)
+        {
+            int bestIndex = filteredIndices[0];
+            finalIndices.Add(bestIndex);
+            filteredIndices.RemoveAt(0);
+
+            List<int> toRemove = new List<int>();
+            foreach (int index in filteredIndices)
+            {
+                if (IOU(boxes[bestIndex], boxes[index]) > nmsThreshold)
+                {
+                    toRemove.Add(index);
+                }
+            }
+
+            foreach (int index in toRemove)
+            {
+                filteredIndices.Remove(index);
+            }
+        }
+
+        indices.fromList(finalIndices);
+    }
+
+    private static float IOU(Rect boxA, Rect boxB)
+    {
+        int x1 = System.Math.Max(boxA.x, boxB.x);
+        int y1 = System.Math.Max(boxA.y, boxB.y);
+        int x2 = System.Math.Min(boxA.x + boxA.width, boxB.x + boxB.width);
+        int y2 = System.Math.Min(boxA.y + boxA.height, boxB.y + boxB.height);
+
+        int interArea = System.Math.Max(0, x2 - x1 + 1) * System.Math.Max(0, y2 - y1 + 1);
+
+        int boxAArea = boxA.width * boxA.height;
+        int boxBArea = boxB.width * boxB.height;
+
+        return (float)interArea / (boxAArea + boxBArea - interArea);
+    }
+
+    public virtual void visualize(Mat image, Mat results, bool print_results = false, bool isRGB = false)
+    {
+        if (image.IsDisposed)
+            return;
+
+        if (results.empty() || results.cols() < 19)
+            return;
+
+        StringBuilder sb = null;
+
+        if (print_results)
+            sb = new StringBuilder(256);
+
+        for (int i = 0; i < results.rows(); ++i)
+        {
+            float[] score = new float[1];
+            results.get(i, 18, score);
+            float[] palm_box = new float[4];
+            results.get(i, 0, palm_box);
+            float[] palm_landmarks = new float[14];
+            results.get(i, 4, palm_landmarks);
+
+            // put score
+            Imgproc.putText(image, score[0].ToString("F4"), new Point(palm_box[0], palm_box[1] + 12), Imgproc.FONT_HERSHEY_DUPLEX, 0.5, new Scalar(0, 255, 0, 255));
+
+            // draw box
+            Imgproc.rectangle(image, new Point(palm_box[0], palm_box[1]), new Point(palm_box[2], palm_box[3]), new Scalar(0, 255, 0, 255), 2);
+
+            // draw points
+            for (int j = 0; j < 14; j += 2)
+            {
+                Imgproc.circle(image, new Point(palm_landmarks[j], palm_landmarks[j + 1]), 2, (isRGB) ? new Scalar(255, 0, 0, 255) : new Scalar(0, 0, 255, 255), 2);
+            }
+
+            // Print results
+            if (print_results)
+            {
+                sb.AppendFormat("-----------palm {0}-----------", i + 1);
+                sb.AppendLine();
+                sb.AppendFormat("score: {0:F3}", score[0]);
+                sb.AppendLine();
+                sb.AppendFormat("palm box: {0:F0} {1:F0} {2:F0} {3:F0}", palm_box[0], palm_box[1], palm_box[2], palm_box[3]);
+                sb.AppendLine();
+                sb.Append("palm landmarks: ");
+                foreach (var p in palm_landmarks)
+                {
+                    sb.AppendFormat("{0:F0} ", p);
+                }
+                sb.AppendLine();
+            }
+        }
+
+        if (print_results)
+            Debug.Log(sb.ToString() + sb.Length);
     }
 
     public void Destroy()
