@@ -49,7 +49,7 @@ public class TestModelRunner : MonoBehaviour
         debugRenderer1.material.mainTexture = rHandTexture;
         var procTex = palmDetector.preprocess(rHandTexture);
         debugRenderer2.material.mainTexture = procTex;
-        Debug.Log($"procTex dimensions: {procTex.Size()}");
+        //Debug.Log($"procTex dimensions: {procTex.Size()}");
         //var id = palmDetector.DetectPalms(procTex);
         StartAsync(procTex, debugRenderer3);
 

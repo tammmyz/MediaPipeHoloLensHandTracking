@@ -185,7 +185,7 @@ public class MediaPipePalmDetector
         //return modelWorker.PeekOutput();
     }
 
-    protected virtual Mat postprocess(List<Mat> output_blob)
+    protected Mat postprocess(List<Mat> output_blob)
     {
         int num = output_blob[0].size(1);
         Debug.Log($"num: {num}");
@@ -308,8 +308,7 @@ public class MediaPipePalmDetector
         return results;
     }
 
-
-    public static void NMS(MatOfRect2d boxes, MatOfFloat confidences, float scoreThreshold, float nmsThreshold, MatOfInt indices, float eta = 1.0f, int topK = 0)
+    public static async void NMS(MatOfRect2d boxes, MatOfFloat confidences, float scoreThreshold, float nmsThreshold, MatOfInt indices, float eta = 1.0f, int topK = 0)
     {
         // Get the number of boxes
         int numBoxes = boxes.rows();
