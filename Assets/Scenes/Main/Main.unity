@@ -464,9 +464,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2fa1586e67c49c9409d0e1f36169e6bc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  handTexture: {fileID: 2800000, guid: 2763a29401153dd40ba6266fa0ac7673, type: 3}
+  handTexture: {fileID: 2800000, guid: 49f409bfb194c14488ad4613b8978c4c, type: 3}
   debugRenderer1: {fileID: 1505403045}
   debugRenderer2: {fileID: 2128364446}
+  debugRenderer3: {fileID: 1372325879}
   modelOnnx: {fileID: 5022602860645237092, guid: 19254e76d5d1d6342b956a266b94044d, type: 3}
 --- !u!4 &790127458
 Transform:

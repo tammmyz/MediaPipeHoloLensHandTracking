@@ -27,6 +27,7 @@ public class PalmData : MonoBehaviour
         };
     }
 
+    public PalmData() { }
 
 
 }

@@ -19,6 +19,9 @@ public class TestModelRunner : MonoBehaviour
     public Renderer debugRenderer2;
 
     [SerializeField]
+    public Renderer debugRenderer3;
+
+    [SerializeField]
     ModelAsset modelOnnx;
 
     private int inputSize = 192;
@@ -48,7 +51,7 @@ public class TestModelRunner : MonoBehaviour
         debugRenderer2.material.mainTexture = procTex;
         Debug.Log($"procTex dimensions: {procTex.Size()}");
         //var id = palmDetector.DetectPalms(procTex);
-        StartAsync(procTex);
+        StartAsync(procTex, debugRenderer3);
 
         //StartAsync(procTex);
         //var rHandMat = palmDetector.toMat(procTex);
@@ -56,9 +59,9 @@ public class TestModelRunner : MonoBehaviour
         //Debug.Log($"Mat rows: {rHandMat}");
     }
 
-    async void StartAsync(Texture2D procTex)
+    async void StartAsync(Texture2D procTex, Renderer renderer)
     {
-        var id = await palmDetector.DetectPalms(procTex);
+        var id = await palmDetector.DetectPalms(procTex, renderer);
         await Task.Delay(32);
         Debug.Log($"id: {id}");
     }

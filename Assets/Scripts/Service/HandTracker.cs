@@ -35,12 +35,12 @@ namespace HandTracking
             var procTex = palmDetector.preprocess(texture);
             return procTex;
         }
-        public async Task<int> DetectPalms(Texture2D texture)
+        public async Task<int> DetectPalms(Texture2D texture, Renderer renderer)
         {
             //Debug.Log("Palm detected - dummy");
             //List<int> result = await GetDummyTask();
 
-            var result = await palmDetector.DetectPalms(texture);
+            var result = await palmDetector.DetectPalms(texture, renderer);
             await Task.Delay(32);
             Debug.Log($"id: {result}");
             return result;

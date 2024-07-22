@@ -30,6 +30,7 @@ MonoBehaviour:
     m_Name: package.openupm.com
     m_Url: https://package.openupm.com
     m_Scopes:
+    - com.github-glitchenzo.nugetforunity
     - com.realitycollective.service-framework
     - com.realitycollective.utilities
     m_IsDefault: 0

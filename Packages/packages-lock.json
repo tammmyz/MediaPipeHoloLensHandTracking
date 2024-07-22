@@ -1,5 +1,12 @@
 {
   "dependencies": {
+    "com.github-glitchenzo.nugetforunity": {
+      "version": "4.1.1",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://package.openupm.com"
+    },
     "com.microsoft.mixedreality.openxr": {
       "version": "file:MixedReality/com.microsoft.mixedreality.openxr-1.10.1.tgz",
       "depth": 0,

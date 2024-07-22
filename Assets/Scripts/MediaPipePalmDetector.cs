@@ -1,13 +1,9 @@
-using HandTracking;
 using OpenCVForUnity.CoreModule;
-using OpenCVForUnity.ImgprocModule;
-using OpenCVForUnity.UnityUtils;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Sentis;
 using System.Threading.Tasks;
 using OpenCVRange = OpenCVForUnity.CoreModule.Range;
-using System.Text;
 using Rect = OpenCVForUnity.CoreModule.Rect;
 
 /// <summary>
@@ -18,27 +14,17 @@ public class MediaPipePalmDetector
     float nms_threshold;
     float score_threshold;
     int topK;
-    int backend;
-    int target;
 
     Size input_size = new Size(192, 192);
 
     ModelAsset palm_detection_net;
     Mat anchors;
 
-    Mat input_sizeMat;
-    Mat maxSizeImg;
-
     Mat boxesMat;
     Mat boxes_m_c4;
     Mat confidences_m;
     MatOfRect2d boxes;
     MatOfFloat confidences;
-
-    private int targetSize = 192;
-
-    private Texture2D maxSizeTexture;
-    private Texture2D processTexture;
 
     private Model model;
     private IWorker worker;
@@ -110,8 +96,6 @@ public class MediaPipePalmDetector
     {
         TensorFloat inputTensor = TextureConverter.ToTensor(texture);
         inputTensor.MakeReadable();
-        Debug.Log($"input row 0: {inputTensor[0,0,0,0]} {inputTensor[0, 0, 1, 0]} {inputTensor[0, 0, 2, 0]} {inputTensor[0, 0, 3, 0]}");
-        Debug.Log($"input row 50: {inputTensor[0, 50, 0, 0]} {inputTensor[0, 50, 1, 0]} {inputTensor[0, 50, 2, 0]} {inputTensor[0, 50, 3, 0]}");
         var shape = inputTensor.shape;
         Debug.Log($"input tensor shape: [{string.Join(',', shape)}], {inputTensor}");
         await Task.Delay(32);
@@ -125,8 +109,10 @@ public class MediaPipePalmDetector
         Debug.Log($"mat:\n{outputBlob}");
         Mat processedMat = postprocess(outputBlob);
         Debug.Log($"mat post processing: {processedMat.size()}\n{processedMat.dump()}");
-        Texture2D debug3 = new Texture2D(192, 192);
-        Utils.fastMatToTexture2D(processedMat, debug3);
+        Texture2D debug3 = new Texture2D(texture.width, texture.height, texture.format, false);
+        debug3.SetPixels(texture.GetPixels());
+        debug3.Apply();
+        visualize(debug3, processedMat, 192, 192);
         debugRenderer.material.mainTexture = debug3;
         return 0;
     }
@@ -257,11 +243,6 @@ public class MediaPipePalmDetector
         boxesMat.convertTo(boxes_m_c1, CvType.CV_64F);
         score.copyTo(confidences_m);
         MatOfInt indices = new MatOfInt();
-        Debug.Log($"boxes: {boxes.size()}");
-        Debug.Log($"confidences: {confidences.size()}");
-        Debug.Log($"score_threshold: {score_threshold}");
-        Debug.Log($"nms_threshold: {nms_threshold}");
-        Debug.Log($"topK: {topK}");
 
         List<Rect> boxList = new List<Rect>();
         List<float> confidenceList = new List<float>();
@@ -275,7 +256,10 @@ public class MediaPipePalmDetector
             confidences_m.get(i, 0, confidenceData);
             confidenceList.Add(confidenceData[0]);
         }
-        ApplyNMS(boxList, confidenceList, score_threshold, nms_threshold, indices, 1f, topK);
+
+        NMS(boxes, confidences, score_threshold, nms_threshold, indices, 1f, topK);
+
+        Debug.Log($"indices: {indices.size()}{indices.dump()}");
 
         // get landmarks
         Mat results = new Mat(indices.rows(), 19, CvType.CV_32FC1);
@@ -324,20 +308,24 @@ public class MediaPipePalmDetector
         return results;
     }
 
-    public static void ApplyNMS(List<Rect> boxes, List<float> confidences, float scoreThreshold, float nmsThreshold, MatOfInt indices, float eta = 1.0f, int topK = 0)
+
+    public static void NMS(MatOfRect2d boxes, MatOfFloat confidences, float scoreThreshold, float nmsThreshold, MatOfInt indices, float eta = 1.0f, int topK = 0)
     {
+        // Get the number of boxes
+        int numBoxes = boxes.rows();
+
         // Filter boxes and confidences based on score threshold
         List<int> filteredIndices = new List<int>();
-        for (int i = 0; i < confidences.Count; i++)
+        for (int i = 0; i < numBoxes; i++)
         {
-            if (confidences[i] > scoreThreshold)
+            if (confidences.get(i, 0)[0] > scoreThreshold)
             {
                 filteredIndices.Add(i);
             }
         }
 
         // Sort the filtered indices based on the confidences in descending order
-        filteredIndices.Sort((i1, i2) => confidences[i2].CompareTo(confidences[i1]));
+        filteredIndices.Sort((i1, i2) => confidences.get(i2, 0)[0].CompareTo(confidences.get(i1, 0)[0]));
 
         // If topK is set and less than the number of filtered indices, keep only the topK elements
         if (topK > 0 && topK < filteredIndices.Count)
@@ -355,7 +343,7 @@ public class MediaPipePalmDetector
             List<int> toRemove = new List<int>();
             foreach (int index in filteredIndices)
             {
-                if (IOU(boxes[bestIndex], boxes[index]) > nmsThreshold)
+                if (IOU(boxes.get(bestIndex, 0), boxes.get(index, 0)) > nmsThreshold)
                 {
                     toRemove.Add(index);
                 }
@@ -370,75 +358,75 @@ public class MediaPipePalmDetector
         indices.fromList(finalIndices);
     }
 
-    private static float IOU(Rect boxA, Rect boxB)
+    private static float IOU(double[] boxA, double[] boxB)
     {
-        int x1 = System.Math.Max(boxA.x, boxB.x);
-        int y1 = System.Math.Max(boxA.y, boxB.y);
-        int x2 = System.Math.Min(boxA.x + boxA.width, boxB.x + boxB.width);
-        int y2 = System.Math.Min(boxA.y + boxA.height, boxB.y + boxB.height);
+        int x1 = System.Math.Max((int)boxA[0], (int)boxB[0]);
+        int y1 = System.Math.Max((int)boxA[1], (int)boxB[1]);
+        int x2 = System.Math.Min((int)boxA[2], (int)boxB[2]);
+        int y2 = System.Math.Min((int)boxA[3], (int)boxB[3]);
 
         int interArea = System.Math.Max(0, x2 - x1 + 1) * System.Math.Max(0, y2 - y1 + 1);
 
-        int boxAArea = boxA.width * boxA.height;
-        int boxBArea = boxB.width * boxB.height;
+        int boxAArea = ((int)boxA[2] - (int)boxA[0] + 1) * ((int)boxA[3] - (int)boxA[1] + 1);
+        int boxBArea = ((int)boxB[2] - (int)boxB[0] + 1) * ((int)boxB[3] - (int)boxB[1] + 1);
 
         return (float)interArea / (boxAArea + boxBArea - interArea);
     }
 
-    public virtual void visualize(Mat image, Mat results, bool print_results = false, bool isRGB = false)
+    public void visualize(Texture2D texture, Mat mat, int width, int height)
     {
-        if (image.IsDisposed)
-            return;
-
-        if (results.empty() || results.cols() < 19)
-            return;
-
-        StringBuilder sb = null;
-
-        if (print_results)
-            sb = new StringBuilder(256);
-
-        for (int i = 0; i < results.rows(); ++i)
+        float[] values = new float[mat.rows() * mat.cols()];
+        mat.get(0, 0, values);
+        Vector2[] normalizedPoints = new Vector2[values.Length / 2];
+        for (int i = 0; i < normalizedPoints.Length; i++)
         {
-            float[] score = new float[1];
-            results.get(i, 18, score);
-            float[] palm_box = new float[4];
-            results.get(i, 0, palm_box);
-            float[] palm_landmarks = new float[14];
-            results.get(i, 4, palm_landmarks);
+            float x = values[i * 2]; // Assuming values are stored as x and y pairs
+            float y = values[i * 2 + 1];
 
-            // put score
-            Imgproc.putText(image, score[0].ToString("F4"), new Point(palm_box[0], palm_box[1] + 12), Imgproc.FONT_HERSHEY_DUPLEX, 0.5, new Scalar(0, 255, 0, 255));
+            // Normalize x and y
+            normalizedPoints[i] = new Vector2(x * width, y * height);
+        }
+        Color[] pixels = texture.GetPixels();
 
-            // draw box
-            Imgproc.rectangle(image, new Point(palm_box[0], palm_box[1]), new Point(palm_box[2], palm_box[3]), new Scalar(0, 255, 0, 255), 2);
-
-            // draw points
-            for (int j = 0; j < 14; j += 2)
-            {
-                Imgproc.circle(image, new Point(palm_landmarks[j], palm_landmarks[j + 1]), 2, (isRGB) ? new Scalar(255, 0, 0, 255) : new Scalar(0, 0, 255, 255), 2);
-            }
-
-            // Print results
-            if (print_results)
-            {
-                sb.AppendFormat("-----------palm {0}-----------", i + 1);
-                sb.AppendLine();
-                sb.AppendFormat("score: {0:F3}", score[0]);
-                sb.AppendLine();
-                sb.AppendFormat("palm box: {0:F0} {1:F0} {2:F0} {3:F0}", palm_box[0], palm_box[1], palm_box[2], palm_box[3]);
-                sb.AppendLine();
-                sb.Append("palm landmarks: ");
-                foreach (var p in palm_landmarks)
-                {
-                    sb.AppendFormat("{0:F0} ", p);
-                }
-                sb.AppendLine();
-            }
+        // Draw each point on the texture
+        for (int i = 2; i < normalizedPoints.Length; i++)
+        {
+            int x = Mathf.Clamp(Mathf.RoundToInt(normalizedPoints[i].x), 0, texture.width - 1);
+            int y = Mathf.Clamp(Mathf.RoundToInt(height - normalizedPoints[i].y), 0, texture.height - 1);
+            pixels[y * texture.width + x] = Color.green; // Set color at the point
         }
 
-        if (print_results)
-            Debug.Log(sb.ToString() + sb.Length);
+        Vector2 p1 = normalizedPoints[0];
+        Vector2 p2 = normalizedPoints[1];
+
+        int x1 = Mathf.Clamp(Mathf.RoundToInt(p1.x), 0, texture.width - 1);
+        int y1 = Mathf.Clamp(Mathf.RoundToInt(height - p1.y), 0, texture.height - 1);
+        int x2 = Mathf.Clamp(Mathf.RoundToInt(p2.x), 0, texture.width - 1);
+        int y2 = Mathf.Clamp(Mathf.RoundToInt(height - p2.y), 0, texture.height - 1);
+
+        // Ensure x1 <= x2 and y1 <= y2
+        int minX = Mathf.Min(x1, x2);
+        int maxX = Mathf.Max(x1, x2);
+        int minY = Mathf.Min(y1, y2);
+        int maxY = Mathf.Max(y1, y2);
+
+        // Draw horizontal lines
+        for (int x = minX; x <= maxX; x++)
+        {
+            pixels[minY * texture.width + x] = Color.red; // Top edge
+            pixels[maxY * texture.width + x] = Color.red; // Bottom edge
+        }
+
+        // Draw vertical lines
+        for (int y = minY; y <= maxY; y++)
+        {
+            pixels[y * texture.width + minX] = Color.red; // Left edge
+            pixels[y * texture.width + maxX] = Color.red; // Right edge
+        }
+
+        // Apply changes to the texture
+        texture.SetPixels(pixels);
+        texture.Apply();
     }
 
     public void Destroy()
