@@ -1,8 +1,9 @@
 using OpenCVForUnity.CoreModule;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using TextureProcUtils;
 using UnityEngine;
 using Unity.Sentis;
-using System.Threading.Tasks;
 using OpenCVRange = OpenCVForUnity.CoreModule.Range;
 using Rect = OpenCVForUnity.CoreModule.Rect;
 using URect = UnityEngine.Rect;
@@ -79,13 +80,7 @@ public class MediaPipePalmDetector
 
         // Post-process model outputs
         Mat detectedPalms = Postprocess(outputBlob);
-
-        // View image and detected bounding box and landmarks
-        Texture2D debug3 = new Texture2D(processedTexture.width, processedTexture.height, processedTexture.format, false);
-        debug3.SetPixels(processedTexture.GetPixels());
-        debug3.Apply();
-        visualize(debug3, detectedPalms, 192, 192);
-        r3.material.mainTexture = debug3;
+        visualize(processedTexture, detectedPalms, 192, 192, r3);
 
         return detectedPalms;
     }
@@ -93,29 +88,8 @@ public class MediaPipePalmDetector
     // Preprocess input texture
     protected Texture2D Preprocess(Texture2D tex)
     {
-        // Resize input texture
-        Texture2D resizedTex;
-        if (tex.width > tex.height)
-        {
-            int newH = 192 * tex.height / tex.width;
-            resizedTex = _resize(tex, 192, newH);
-        }
-        else
-        {
-            int newW = 192 * tex.width / tex.height;
-            resizedTex = _resize(tex, newW, 192);
-        }
-
-        // Pad image to make square
         int maxSize = (int)input_size.width;
-        int offsetX = (maxSize - resizedTex.width) / 2;
-        int offsetY = (maxSize - resizedTex.height) / 2;
-        Texture2D paddedTex = new Texture2D(maxSize, maxSize, TextureFormat.RGB24, false);
-        Color[] texPixels = resizedTex.GetPixels();
-        paddedTex.SetPixels(offsetX, offsetY, resizedTex.width, resizedTex.height, texPixels);
-        paddedTex.Apply();
-        RenderTexture.active = null;
-
+        Texture2D paddedTex = TexProcUtils.resizePad(tex, maxSize);
         return paddedTex;
     }
 
@@ -293,18 +267,6 @@ public class MediaPipePalmDetector
         return results;
     }
 
-    // Helper function to resize Texture2D
-    private Texture2D _resize(Texture2D texture2D, int targetX, int targetY)
-    {
-        RenderTexture rt = new RenderTexture(targetX, targetY, 24, RenderTextureFormat.ARGB32);
-        RenderTexture.active = rt;
-        Graphics.Blit(texture2D, rt);
-        Texture2D result = new Texture2D(targetX, targetY, TextureFormat.RGB24, false);
-        result.ReadPixels(new URect(0, 0, targetX, targetY), 0, 0);
-        result.Apply();
-        return result;
-    }
-
     // Helper function, non-maximum suppression
     private void _NMS(MatOfRect2d boxes, MatOfFloat confidences, float scoreThreshold, float nmsThreshold, MatOfInt indices, float eta=1.0f, int topK=0)
     {
@@ -372,8 +334,12 @@ public class MediaPipePalmDetector
     }
 
     // Function to visualize bounding box and palm landmarks
-    protected void visualize(Texture2D texture, Mat mat, int width, int height)
+    public void visualize(Texture2D image, Mat mat, int width, int height, Renderer renderer)
     {
+        Texture2D debugTex = new Texture2D(image.width, image.height, image.format, false);
+        debugTex.SetPixels(image.GetPixels());
+        debugTex.Apply();
+
         float[] values = new float[mat.rows() * mat.cols()];
         mat.get(0, 0, values);
         Vector2[] normalizedPoints = new Vector2[values.Length / 2];
@@ -385,23 +351,23 @@ public class MediaPipePalmDetector
             // Normalize x and y
             normalizedPoints[i] = new Vector2(x * width, y * height);
         }
-        Color[] pixels = texture.GetPixels();
+        Color[] pixels = debugTex.GetPixels();
 
         // Draw each point on the texture
         for (int i = 2; i < normalizedPoints.Length; i++)
         {
-            int x = Mathf.Clamp(Mathf.RoundToInt(normalizedPoints[i].x), 0, texture.width - 1);
-            int y = Mathf.Clamp(Mathf.RoundToInt(height - normalizedPoints[i].y), 0, texture.height - 1);
-            pixels[y * texture.width + x] = Color.green; // Set color at the point
+            int x = Mathf.Clamp(Mathf.RoundToInt(normalizedPoints[i].x), 0, debugTex.width - 1);
+            int y = Mathf.Clamp(Mathf.RoundToInt(height - normalizedPoints[i].y), 0, debugTex.height - 1);
+            pixels[y * debugTex.width + x] = Color.green; // Set color at the point
         }
 
         Vector2 p1 = normalizedPoints[0];
         Vector2 p2 = normalizedPoints[1];
 
-        int x1 = Mathf.Clamp(Mathf.RoundToInt(p1.x), 0, texture.width - 1);
-        int y1 = Mathf.Clamp(Mathf.RoundToInt(height - p1.y), 0, texture.height - 1);
-        int x2 = Mathf.Clamp(Mathf.RoundToInt(p2.x), 0, texture.width - 1);
-        int y2 = Mathf.Clamp(Mathf.RoundToInt(height - p2.y), 0, texture.height - 1);
+        int x1 = Mathf.Clamp(Mathf.RoundToInt(p1.x), 0, debugTex.width - 1);
+        int y1 = Mathf.Clamp(Mathf.RoundToInt(height - p1.y), 0, debugTex.height - 1);
+        int x2 = Mathf.Clamp(Mathf.RoundToInt(p2.x), 0, debugTex.width - 1);
+        int y2 = Mathf.Clamp(Mathf.RoundToInt(height - p2.y), 0, debugTex.height - 1);
 
         // Ensure x1 <= x2 and y1 <= y2
         int minX = Mathf.Min(x1, x2);
@@ -412,20 +378,22 @@ public class MediaPipePalmDetector
         // Draw horizontal lines
         for (int x = minX; x <= maxX; x++)
         {
-            pixels[minY * texture.width + x] = Color.red; // Top edge
-            pixels[maxY * texture.width + x] = Color.red; // Bottom edge
+            pixels[minY * debugTex.width + x] = Color.red; // Top edge
+            pixels[maxY * debugTex.width + x] = Color.red; // Bottom edge
         }
 
         // Draw vertical lines
         for (int y = minY; y <= maxY; y++)
         {
-            pixels[y * texture.width + minX] = Color.red; // Left edge
-            pixels[y * texture.width + maxX] = Color.red; // Right edge
+            pixels[y * debugTex.width + minX] = Color.red; // Left edge
+            pixels[y * debugTex.width + maxX] = Color.red; // Right edge
         }
 
         // Apply changes to the texture
-        texture.SetPixels(pixels);
-        texture.Apply();
+        debugTex.SetPixels(pixels);
+        debugTex.Apply();
+
+        renderer.sharedMaterial.mainTexture = debugTex;
     }
 
     public void Destroy()
