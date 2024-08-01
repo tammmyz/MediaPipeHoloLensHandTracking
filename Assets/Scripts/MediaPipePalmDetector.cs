@@ -44,7 +44,7 @@ public class MediaPipePalmDetector
         // Load the model from the provided NNModel asset
         model = ModelLoader.Load(palm_detection_net);
 
-        // Create a Barracuda worker to run the model on the GPU
+        // Create a Sentis worker to run the model on the GPU
         worker = WorkerFactory.CreateWorker(BackendType.CPU, model);
     }
 
@@ -78,9 +78,9 @@ public class MediaPipePalmDetector
         int maxSize = Mathf.Max(tex.width, tex.height);
         int offsetX = (maxSize - tex.width) / 2;
         int offsetY = (maxSize - tex.height) / 2;
-        Debug.Log("Max: " + maxSize.ToString()
-            + "\tOffsetX: " + offsetX.ToString()
-            + "\tOffsety: " + offsetY.ToString());
+        //Debug.Log("Max: " + maxSize.ToString()
+        //    + "\tOffsetX: " + offsetX.ToString()
+        //    + "\tOffsety: " + offsetY.ToString());
 
         Texture2D paddedTex = new Texture2D(maxSize, maxSize, TextureFormat.RGB24, false);
         Color[] texPixels = tex.GetPixels();
@@ -92,7 +92,7 @@ public class MediaPipePalmDetector
         return paddedTex;
     }
 
-    public async Task<int> DetectPalms(Texture2D texture, Renderer debugRenderer)
+    public async Task<Mat> DetectPalms(Texture2D texture, Renderer debugRenderer)
     {
         TensorFloat inputTensor = TextureConverter.ToTensor(texture);
         inputTensor.MakeReadable();
@@ -106,15 +106,21 @@ public class MediaPipePalmDetector
         await Task.Delay(32);
 
         List<Mat> outputBlob = PalmData2MatList(outputData);
-        Debug.Log($"mat:\n{outputBlob}");
+        //Debug.Log($"mat:\n{outputBlob}");
         Mat processedMat = postprocess(outputBlob);
-        Debug.Log($"mat post processing: {processedMat.size()}\n{processedMat.dump()}");
+        //Debug.Log($"mat post processing: {processedMat.size()}\n{processedMat.dump()}");
         Texture2D debug3 = new Texture2D(texture.width, texture.height, texture.format, false);
         debug3.SetPixels(texture.GetPixels());
         debug3.Apply();
         visualize(debug3, processedMat, 192, 192);
         debugRenderer.material.mainTexture = debug3;
-        return 0;
+
+        //foreach (var mat in outputBlob)
+        //{
+        //    mat.Dispose();
+        //}
+
+        return processedMat;
     }
 
     public List<Mat> PalmData2MatList(PalmData palmData)
@@ -136,10 +142,9 @@ public class MediaPipePalmDetector
     // Nicked from https://github.com/Unity-Technologies/barracuda-release/issues/236#issue-1049168663
     public async Task<PalmData> ForwardAsync(IWorker modelWorker, TensorFloat inputs)
     {
-        Debug.Log("starting forward async");
+        Debug.Log("Starting forward async");
         var executor = modelWorker.StartManualSchedule(inputs);
         var it = 0;
-        //Debug.Log("iteration 0");
         bool hasMoreWork;
         do
         {
@@ -149,7 +154,6 @@ public class MediaPipePalmDetector
                 modelWorker.FlushSchedule();
                 await Task.Delay(32);
             }
-            //Debug.Log($"iteration {it}]\thasMoreWork: {hasMoreWork}");
         } while (hasMoreWork);        
         var outputData_1 = modelWorker.PeekOutput("Identity") as TensorFloat;
         var outputData_2 = modelWorker.PeekOutput("Identity_1") as TensorFloat;
@@ -159,46 +163,14 @@ public class MediaPipePalmDetector
         return palmData;
     }
 
-    public PalmData ForwardSync(IWorker modelWorker, TensorFloat inputs)
-    {
-        try
-        {
-            Debug.Log("Starting forward sync");
-            modelWorker.Execute(inputs);
-            Debug.Log("Inference complete");
-            var lm = new List<float[]>();
-            var outputData_1 = modelWorker.PeekOutput("Identity") as TensorFloat;
-            var outputData_2 = modelWorker.PeekOutput("Identity_1") as TensorFloat;
-            PalmData palmData = new PalmData(outputData_1, outputData_2);
-            outputData_1.Dispose();
-            outputData_2.Dispose();
-            return palmData;
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"Error during inference: {ex.Message}");
-            return new PalmData();
-        }
-        //Debug.Log("Starting forward sync");
-        //modelWorker.Execute(inputs);
-        //Debug.Log("Inference complete");
-        //return modelWorker.PeekOutput();
-    }
-
     protected Mat postprocess(List<Mat> output_blob)
     {
         int num = output_blob[0].size(1);
-        Debug.Log($"num: {num}");
-        Debug.Log($"output_blob: {output_blob[0].size()}");
         Mat output_blob_1_numx1 = output_blob[1].reshape(1, num);
         Mat score = output_blob_1_numx1.colRange(new OpenCVRange(0, 1));
-        Debug.Log($"score: {score.size()}");
-
         Mat output_blob_0_numx18 = output_blob[0].reshape(1, num);
         Mat box_delta = output_blob_0_numx18.colRange(new OpenCVRange(0, 4));
         Mat landmark_delta = output_blob_0_numx18.colRange(new OpenCVRange(4, 18));
-        Debug.Log($"box_delta: {box_delta.size()}");
-        Debug.Log($"landmark_delta: {landmark_delta.size()}");
 
         // get scores
         Core.multiply(score, Scalar.all(1.0), score, -1.0);
@@ -221,10 +193,8 @@ public class MediaPipePalmDetector
         Mat xy2 = boxesMat.colRange(new OpenCVRange(2, 4));
 
         Core.divide(wh_delta, new Scalar(2.0), wh_delta);
-
         Core.subtract(cxy_delta, wh_delta, xy1);
         Core.add(xy1, anchors, xy1);
-
         Core.add(cxy_delta, wh_delta, xy2);
         Core.add(xy2, anchors, xy2);
 
@@ -258,8 +228,6 @@ public class MediaPipePalmDetector
         }
 
         NMS(boxes, confidences, score_threshold, nms_threshold, indices, 1f, topK);
-
-        Debug.Log($"indices: {indices.size()}{indices.dump()}");
 
         // get landmarks
         Mat results = new Mat(indices.rows(), 19, CvType.CV_32FC1);
@@ -299,6 +267,19 @@ public class MediaPipePalmDetector
         }
 
         indices.Dispose();
+        boxes_m_c1.Dispose();
+        boxesMat.Dispose();
+        score.Dispose();
+        box_delta.Dispose();
+        landmark_delta.Dispose();
+        cxy_delta.Dispose();
+        _cxy_delta_numx1_c2.Dispose();
+        wh_delta.Dispose();
+        _wh_delta_numx1_c2.Dispose();
+        xy1.Dispose();
+        xy2.Dispose();
+        _cxy_delta_numx1_c2.Dispose();
+        _wh_delta_numx1_c2.Dispose();
 
         // [
         //   [bbox_coords, landmarks_coords, score]
@@ -308,7 +289,7 @@ public class MediaPipePalmDetector
         return results;
     }
 
-    public static async void NMS(MatOfRect2d boxes, MatOfFloat confidences, float scoreThreshold, float nmsThreshold, MatOfInt indices, float eta = 1.0f, int topK = 0)
+    private static void NMS(MatOfRect2d boxes, MatOfFloat confidences, float scoreThreshold, float nmsThreshold, MatOfInt indices, float eta = 1.0f, int topK = 0)
     {
         // Get the number of boxes
         int numBoxes = boxes.rows();

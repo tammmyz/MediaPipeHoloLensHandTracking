@@ -1,10 +1,6 @@
 using HandTracking.Interfaces;
-using Microsoft.MixedReality.Toolkit;
-using RealityCollective.ServiceFramework.Definitions;
-using RealityCollective.ServiceFramework.Interfaces;
+using OpenCVForUnity.CoreModule;
 using RealityCollective.ServiceFramework.Services;
-using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Unity.Sentis;
 using UnityEngine;
@@ -18,11 +14,13 @@ namespace HandTracking
 
         private readonly HandTrackerProfile profile;
         private MediaPipePalmDetector palmDetector;
+        private MediaPipeHandPoseEstimator handPoseEstimator;
         public HandTracker(string name, uint priority, HandTrackerProfile profile)
             : base(name, priority)
         {
             this.profile = profile;
             palmDetector = new MediaPipePalmDetector(profile.PalmDetectorAsset);
+            handPoseEstimator = new MediaPipeHandPoseEstimator(profile.HandPoseEstimatorAsset);
         }
 
         public override void Initialize()
@@ -35,7 +33,7 @@ namespace HandTracking
             var procTex = palmDetector.preprocess(texture);
             return procTex;
         }
-        public async Task<int> DetectPalms(Texture2D texture, Renderer renderer)
+        public async Task<Mat> DetectPalms(Texture2D texture, Renderer renderer)
         {
             //Debug.Log("Palm detected - dummy");
             //List<int> result = await GetDummyTask();

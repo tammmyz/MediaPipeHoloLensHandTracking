@@ -12,5 +12,9 @@ namespace HandTracking
         [SerializeField]
         private ModelAsset palmDetectorAsset;
         public ModelAsset PalmDetectorAsset => palmDetectorAsset;
+
+        [SerializeField]
+        private ModelAsset handPoseEstimatorAsset;
+        public ModelAsset HandPoseEstimatorAsset => handPoseEstimatorAsset;
     }
 }
