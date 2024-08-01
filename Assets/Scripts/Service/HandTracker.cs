@@ -1,6 +1,7 @@
 using HandTracking.Interfaces;
 using OpenCVForUnity.CoreModule;
 using RealityCollective.ServiceFramework.Services;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Unity.Sentis;
 using UnityEngine;
@@ -28,17 +29,12 @@ namespace HandTracking
             palmDetector.Initialize();
         }
 
-        public Texture2D preprocess(Texture2D texture)
-        {
-            var procTex = palmDetector.preprocess(texture);
-            return procTex;
-        }
-        public async Task<Mat> DetectPalms(Texture2D texture, Renderer renderer)
+        public async Task<Mat> DetectPalms(Texture2D texture)
         {
             //Debug.Log("Palm detected - dummy");
             //List<int> result = await GetDummyTask();
 
-            var result = await palmDetector.DetectPalms(texture, renderer);
+            var result = await palmDetector.StartAsync(texture);
             await Task.Delay(32);
             Debug.Log($"id: {result}");
             return result;

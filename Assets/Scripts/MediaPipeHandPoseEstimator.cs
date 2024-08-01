@@ -30,7 +30,7 @@ public class MediaPipeHandPoseEstimator
     int PALM_LANDMARKS_INDEX_OF_PALM_BASE = 0;
     int PALM_LANDMARKS_INDEX_OF_MIDDLE_FINGER_BASE = 2;
     Point PALM_BOX_SHIFT_VECTOR = new Point(0, -0.4);
-    double PALM_BOX_ENLARGE_FACTOR = 3;
+    double PALM_BOX_ENLARGE_FACTOR = 3.0;
     Point HAND_BOX_SHIFT_VECTOR = new Point(0, -0.1);
     double HAND_BOX_ENLARGE_FACTOR = 1.65;
 

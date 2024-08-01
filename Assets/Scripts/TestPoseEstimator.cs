@@ -47,52 +47,18 @@ public class TestPoseEstimator : MonoBehaviour
 
     async void StartAsync(Texture2D handTexture, Renderer renderer)
     {
-        Texture2D rHandTexPalm;
-        if (handTexture.width > handTexture.height)
-        {
-            var newPalmH = getNewHeight(handTexture.width, handTexture.height, 192);
-            rHandTexPalm = resize(handTexture, 192, newPalmH);
-        }
-        else
-        {
-            var newPalmW = getNewHeight(handTexture.height, handTexture.width, 192);
-            rHandTexPalm = resize(handTexture, newPalmW, 192);
-        }
-        var procTexPalm = palmDetector.preprocess(rHandTexPalm);
-        Destroy(rHandTexPalm);
-        var mat = await palmDetector.DetectPalms(procTexPalm, renderer);
-        await Task.Delay(32);
-        Debug.Log($"palm: {mat.dump()}");
-        //Debug.Log($"palm shape: {mat.size()}");
-
-
-        Texture2D rHandTexHand;
+        var mat = await palmDetector.StartAsync(handTexture);
         var pad = Mathf.Abs(handTexture.width - handTexture.height) / 2;
-        if (handTexture.width > handTexture.height)
-        {
-            var newHandH = getNewHeight(handTexture.width, handTexture.height, handTexture.width);
-            rHandTexHand = resize(handTexture, handTexture.width, newHandH);
-
-        }
-        else
-        {
-            var newHandW = getNewHeight(handTexture.height, handTexture.width, handTexture.height);
-            rHandTexHand = resize(handTexture, newHandW, handTexture.height);
-        }
-        var procHandTexHand = palmDetector.preprocess(rHandTexHand);
-        //Destroy(rHandTexHand);
-        Debug.Log($"procHandTexHand (w, h): {procHandTexHand.width}, {procHandTexHand.height}");
-        debugRenderer1.material.mainTexture = procHandTexHand;
+        debugRenderer1.material.mainTexture = handTexture;
         Mat rotated_palm_bbox;
         double angle;
         Mat rotation_matrix;
         Mat pad_bias = new Mat(2, 1, CvType.CV_32FC1);
         // Set values for pad_bias (padding values are negative to account for padding)
         pad_bias.put(0, 0, new float[] { -pad, -pad });
-        //Destroy(procHandTexHand);
 
         // old preprocess (the one that i know works
-        Mat rHandMatHand = texture2DToMat(procHandTexHand);
+        Mat rHandMatHand = texture2DToMat(handTexture);
         var procTexHand = handPoseEstimator.preprocess(rHandMatHand, mat, out rotated_palm_bbox, out angle, out rotation_matrix); // Mat
         debugRenderer2.material.mainTexture = procTexHand;
         Debug.Log($"procTexHand (w, h): {procTexHand.width}, {procTexHand.height}");

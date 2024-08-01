@@ -451,7 +451,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &790127457
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -545,7 +545,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &911728534
 Transform:
   m_ObjectHideFlags: 0
@@ -573,7 +573,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9d441f903b1fa2545b139cb5cf7be2c8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  handTexture: {fileID: 2800000, guid: 0ed4b96d87b5fac45ae4e1381b57e4f4, type: 3}
+  handTexture: {fileID: 2800000, guid: 49f409bfb194c14488ad4613b8978c4c, type: 3}
   debugRenderer1: {fileID: 1505403045}
   debugRenderer2: {fileID: 2128364446}
   debugRenderer3: {fileID: 1372325879}
