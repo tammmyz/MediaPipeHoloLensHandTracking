@@ -24,12 +24,5 @@ public class HandPoseData : MonoBehaviour
             output3,
             output4
         };
-        types = new int[]
-        {
-            CvType.CV_32FC(dimensions[0][2]),
-            CvType.CV_32FC(dimensions[1][2]),
-            CvType.CV_32FC(dimensions[2][2]),
-            CvType.CV_32FC(dimensions[3][2])
-        };
     }
 }
