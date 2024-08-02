@@ -1,6 +1,7 @@
 using HandTracking.Interfaces;
 using TextureProcUtils;
 using Unity.Sentis;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class TestPoseEstimator : MonoBehaviour
@@ -26,9 +27,6 @@ public class TestPoseEstimator : MonoBehaviour
     private MediaPipePalmDetector palmDetector;
     private MediaPipeHandPoseEstimator handPoseEstimator;
 
-    private IHandTracker handTracker;
-
-    // Start is called before the first frame update
     void Start()
     {
         palmDetector = new MediaPipePalmDetector(modelOnnxPalm);
@@ -49,9 +47,7 @@ public class TestPoseEstimator : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (handTracker != null)
-        {
-            handTracker.Dispose();
-        }
+        palmDetector.Destroy();
+        handPoseEstimator.Destroy();
     }
 }

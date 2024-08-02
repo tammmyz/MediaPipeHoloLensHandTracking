@@ -474,4 +474,11 @@ public class MediaPipeHandPoseEstimator
         return mat;
     }
 
+    public void Destroy()
+    {
+        if (worker != null)
+        {
+            worker.Dispose();
+        }
+    }
 }

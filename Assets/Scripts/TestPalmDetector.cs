@@ -33,6 +33,7 @@ public class TestPalmDetector : MonoBehaviour
         var detectedPalms = await palmDetector.StartAsyncDebug(handTexture, debugRenderer1, debugRenderer2, debugRenderer3);
         Debug.Log($"detectedPalms: {detectedPalms.dump()}");
     }
+
     private void OnDestroy()
     {
         palmDetector.Destroy();
