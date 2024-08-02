@@ -1,5 +1,4 @@
 using OpenCVForUnity.CoreModule;
-using System.Collections;
 using System.Collections.Generic;
 using Unity.Sentis;
 using UnityEngine;

@@ -1,25 +1,26 @@
 using OpenCVForUnity.CoreModule;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using TextureProcUtils;
 using UnityEngine;
 using Unity.Sentis;
-using System.Threading.Tasks;
 using OpenCVRange = OpenCVForUnity.CoreModule.Range;
 using Rect = OpenCVForUnity.CoreModule.Rect;
+using URect = UnityEngine.Rect;
 
 /// <summary>
-/// Referring to https://github.com/opencv/opencv_zoo/tree/main/models/palm_detection_mediapipe
+/// Referring to EnoxSoftware/OpenCVForUnity HandPoseEstimationMediaPipeExample:
+/// https://github.com/EnoxSoftware/OpenCVForUnity/blob/master/Assets/OpenCVForUnity/Examples/MainModules/dnn/HandPoseEstimationMediaPipeExample
 /// </summary>
 public class MediaPipePalmDetector
 {
+    ModelAsset palm_detection_net;
     float nms_threshold;
     float score_threshold;
     int topK;
-
-    Size input_size = new Size(192, 192);
-
-    ModelAsset palm_detection_net;
     Mat anchors;
 
+    Size input_size = new Size(192, 192);
     Mat boxesMat;
     Mat boxes_m_c4;
     Mat confidences_m;
@@ -29,9 +30,8 @@ public class MediaPipePalmDetector
     private Model model;
     private IWorker worker;
 
-    public MediaPipePalmDetector(ModelAsset modelAsset, float nmsThreshold = 0.3f, float scoreThreshold = 0.5f, int topK = 5000)
+    public MediaPipePalmDetector(ModelAsset modelAsset, float nmsThreshold=0.3f, float scoreThreshold=0.5f, int topK=5000)
     {
-
         palm_detection_net = modelAsset;
         nms_threshold = Mathf.Clamp01(nmsThreshold);
         score_threshold = Mathf.Clamp01(scoreThreshold);
@@ -39,88 +39,108 @@ public class MediaPipePalmDetector
         anchors = load_anchors();
     }
 
+    // Load model and create worker to run model inference
     public void Initialize()
     {
-        // Load the model from the provided NNModel asset
         model = ModelLoader.Load(palm_detection_net);
-
-        // Create a Barracuda worker to run the model on the GPU
         worker = WorkerFactory.CreateWorker(BackendType.CPU, model);
     }
 
-    public void getModelInfo()
+    // Performs pipeline for model inference and processing
+    public async Task<Mat> StartAsync(Texture2D handTexture)
     {
-        Debug.Log($"Model Inputs: {model.inputs.Count}");
-        for (int i = 0; i < model.inputs.Count; i++)
-        {
-            var input = model.inputs[i];
-            var shape = input.shape;
-            Debug.Log($"Input {i}: {input.name}, Shape: {string.Join(", ", shape)}");
-        }
-        //for (int i = 0; i < model.layers.Count; i++)
-        //{
-        //    var layer = model.layers[i];
-        //    Debug.Log($"Layer {i}: {layer.name}, Type: {layer.type}");
+        // Pre-process texture for model
+        var processedTexture = Preprocess(handTexture);
 
-            //    if (layer.datasets != null && layer.datasets.Length > 0)
-            //    {
-            //        foreach (var dataset in layer.datasets)
-            //        {
-            //            Debug.Log($"  Dataset: {dataset.name}, Shape: [{string.Join(", ", dataset.shape)}]");
-            //        }
-            //    }
-            //}
+        // Run model inference
+        var outputBlob = await DetectPalms(processedTexture);
+        await Task.Delay(32);
+
+        // Post-process model outputs
+        Mat detectedPalms = Postprocess(outputBlob);
+
+        return detectedPalms;
     }
 
-    public Texture2D preprocess(Texture2D tex)
+    // Performs pipeline for model inference and processing, for debugging
+    public async Task<Mat> StartAsyncDebug(Texture2D handTexture, Renderer r1, Renderer r2, Renderer r3)
     {
-        // Pad image to make square
-        int maxSize = Mathf.Max(tex.width, tex.height);
-        int offsetX = (maxSize - tex.width) / 2;
-        int offsetY = (maxSize - tex.height) / 2;
-        Debug.Log("Max: " + maxSize.ToString()
-            + "\tOffsetX: " + offsetX.ToString()
-            + "\tOffsety: " + offsetY.ToString());
+        // Render original texture before processing
+        r1.material.mainTexture = handTexture;
+        Debug.Log($"webCamTexture (w,h): {handTexture.width}, {handTexture.height}");
 
-        Texture2D paddedTex = new Texture2D(maxSize, maxSize, TextureFormat.RGB24, false);
-        Color[] texPixels = tex.GetPixels();
-        paddedTex.SetPixels(offsetX, offsetY, tex.width, tex.height, texPixels);
-        paddedTex.Apply();
+        // Pre-process texture for model
+        var processedTexture = Preprocess(handTexture);
+        r2.material.mainTexture = processedTexture;
+        Debug.Log($"processedTexture (w,h): {processedTexture.width}, {processedTexture.height}");
 
-        RenderTexture.active = null;
+        // Run model inference
+        var outputBlob = await DetectPalms(processedTexture);
+        await Task.Delay(32);
 
+        // Post-process model outputs
+        Mat detectedPalms = Postprocess(outputBlob);
+        visualize(processedTexture, detectedPalms, 192, 192, r3);
+
+        return detectedPalms;
+    }
+
+    // Preprocess input texture
+    protected Texture2D Preprocess(Texture2D tex)
+    {
+        int maxSize = (int)input_size.width;
+        Texture2D paddedTex = TexProcUtils.resizePad(tex, maxSize);
         return paddedTex;
     }
 
-    public async Task<int> DetectPalms(Texture2D texture, Renderer debugRenderer)
+    // Function to run model inference to detect palms 
+    protected async Task<List<Mat>> DetectPalms(Texture2D texture)
     {
+        // Create input tensor from Texture2D image
         TensorFloat inputTensor = TextureConverter.ToTensor(texture);
         inputTensor.MakeReadable();
-        var shape = inputTensor.shape;
-        Debug.Log($"input tensor shape: [{string.Join(',', shape)}], {inputTensor}");
         await Task.Delay(32);
 
+        // Run model inference
         var outputData = await ForwardAsync(worker, inputTensor);
-        //var outputData = ForwardSync(worker, inputTensor);
         inputTensor.Dispose();
         await Task.Delay(32);
 
+        // Process output data
         List<Mat> outputBlob = PalmData2MatList(outputData);
-        Debug.Log($"mat:\n{outputBlob}");
-        Mat processedMat = postprocess(outputBlob);
-        Debug.Log($"mat post processing: {processedMat.size()}\n{processedMat.dump()}");
-        Texture2D debug3 = new Texture2D(texture.width, texture.height, texture.format, false);
-        debug3.SetPixels(texture.GetPixels());
-        debug3.Apply();
-        visualize(debug3, processedMat, 192, 192);
-        debugRenderer.material.mainTexture = debug3;
-        return 0;
+
+        return outputBlob;
     }
 
-    public List<Mat> PalmData2MatList(PalmData palmData)
+    // Performs forward pass on palm detection model 
+    // Adapted from https://github.com/Unity-Technologies/barracuda-release/issues/236#issue-1049168663
+    protected async Task<PalmData> ForwardAsync(IWorker modelWorker, TensorFloat inputs)
+    {
+        var executor = modelWorker.StartManualSchedule(inputs);
+        var it = 0;
+        bool hasMoreWork;
+        do
+        {
+            hasMoreWork = executor.MoveNext();
+            if (++it % 20 == 0)
+            {
+                modelWorker.FlushSchedule();
+                await Task.Delay(32);
+            }
+        } while (hasMoreWork);        
+        var outputData_1 = modelWorker.PeekOutput("Identity") as TensorFloat;
+        var outputData_2 = modelWorker.PeekOutput("Identity_1") as TensorFloat;
+        PalmData palmData = new PalmData(outputData_1, outputData_2);
+        outputData_1.Dispose();
+        outputData_2.Dispose();
+        return palmData;
+    }
+
+    // Extract output tensor values as PalmData
+    protected List<Mat> PalmData2MatList(PalmData palmData)
     {
         var lm = new List<Mat>();
-        for (int i = 0; i < palmData.outputs.Count; i++) 
+        for (int i = 0; i < palmData.outputs.Count; i++)
         {
             Mat mat = new Mat(
                 palmData.dimensions[i][0],
@@ -133,72 +153,16 @@ public class MediaPipePalmDetector
         return lm;
     }
 
-    // Nicked from https://github.com/Unity-Technologies/barracuda-release/issues/236#issue-1049168663
-    public async Task<PalmData> ForwardAsync(IWorker modelWorker, TensorFloat inputs)
-    {
-        Debug.Log("starting forward async");
-        var executor = modelWorker.StartManualSchedule(inputs);
-        var it = 0;
-        //Debug.Log("iteration 0");
-        bool hasMoreWork;
-        do
-        {
-            hasMoreWork = executor.MoveNext();
-            if (++it % 20 == 0)
-            {
-                modelWorker.FlushSchedule();
-                await Task.Delay(32);
-            }
-            //Debug.Log($"iteration {it}]\thasMoreWork: {hasMoreWork}");
-        } while (hasMoreWork);        
-        var outputData_1 = modelWorker.PeekOutput("Identity") as TensorFloat;
-        var outputData_2 = modelWorker.PeekOutput("Identity_1") as TensorFloat;
-        PalmData palmData = new PalmData(outputData_1, outputData_2);
-        outputData_1.Dispose();
-        outputData_2.Dispose();
-        return palmData;
-    }
-
-    public PalmData ForwardSync(IWorker modelWorker, TensorFloat inputs)
-    {
-        try
-        {
-            Debug.Log("Starting forward sync");
-            modelWorker.Execute(inputs);
-            Debug.Log("Inference complete");
-            var lm = new List<float[]>();
-            var outputData_1 = modelWorker.PeekOutput("Identity") as TensorFloat;
-            var outputData_2 = modelWorker.PeekOutput("Identity_1") as TensorFloat;
-            PalmData palmData = new PalmData(outputData_1, outputData_2);
-            outputData_1.Dispose();
-            outputData_2.Dispose();
-            return palmData;
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"Error during inference: {ex.Message}");
-            return new PalmData();
-        }
-        //Debug.Log("Starting forward sync");
-        //modelWorker.Execute(inputs);
-        //Debug.Log("Inference complete");
-        //return modelWorker.PeekOutput();
-    }
-
-    protected Mat postprocess(List<Mat> output_blob)
+    // Adapted from EnoxSoftware's OpenCVForUnity HandPoseEstimationMediaPipeExample
+    // Reference: https://github.com/EnoxSoftware/OpenCVForUnity/blob/master/Assets/OpenCVForUnity/Examples
+    protected Mat Postprocess(List<Mat> output_blob)
     {
         int num = output_blob[0].size(1);
-        Debug.Log($"num: {num}");
-        Debug.Log($"output_blob: {output_blob[0].size()}");
         Mat output_blob_1_numx1 = output_blob[1].reshape(1, num);
         Mat score = output_blob_1_numx1.colRange(new OpenCVRange(0, 1));
-        Debug.Log($"score: {score.size()}");
-
         Mat output_blob_0_numx18 = output_blob[0].reshape(1, num);
         Mat box_delta = output_blob_0_numx18.colRange(new OpenCVRange(0, 4));
         Mat landmark_delta = output_blob_0_numx18.colRange(new OpenCVRange(4, 18));
-        Debug.Log($"box_delta: {box_delta.size()}");
-        Debug.Log($"landmark_delta: {landmark_delta.size()}");
 
         // get scores
         Core.multiply(score, Scalar.all(1.0), score, -1.0);
@@ -221,10 +185,8 @@ public class MediaPipePalmDetector
         Mat xy2 = boxesMat.colRange(new OpenCVRange(2, 4));
 
         Core.divide(wh_delta, new Scalar(2.0), wh_delta);
-
         Core.subtract(cxy_delta, wh_delta, xy1);
         Core.add(xy1, anchors, xy1);
-
         Core.add(cxy_delta, wh_delta, xy2);
         Core.add(xy2, anchors, xy2);
 
@@ -257,9 +219,7 @@ public class MediaPipePalmDetector
             confidenceList.Add(confidenceData[0]);
         }
 
-        NMS(boxes, confidences, score_threshold, nms_threshold, indices, 1f, topK);
-
-        Debug.Log($"indices: {indices.size()}{indices.dump()}");
+        _NMS(boxes, confidences, score_threshold, nms_threshold, indices, 1f, topK);
 
         // get landmarks
         Mat results = new Mat(indices.rows(), 19, CvType.CV_32FC1);
@@ -298,8 +258,7 @@ public class MediaPipePalmDetector
             results.put(i, 4, landmarks_arr);
         }
 
-        indices.Dispose();
-
+        // Output format:
         // [
         //   [bbox_coords, landmarks_coords, score]
         //   ...
@@ -308,7 +267,8 @@ public class MediaPipePalmDetector
         return results;
     }
 
-    public static async void NMS(MatOfRect2d boxes, MatOfFloat confidences, float scoreThreshold, float nmsThreshold, MatOfInt indices, float eta = 1.0f, int topK = 0)
+    // Helper function, non-maximum suppression
+    private void _NMS(MatOfRect2d boxes, MatOfFloat confidences, float scoreThreshold, float nmsThreshold, MatOfInt indices, float eta=1.0f, int topK=0)
     {
         // Get the number of boxes
         int numBoxes = boxes.rows();
@@ -342,7 +302,7 @@ public class MediaPipePalmDetector
             List<int> toRemove = new List<int>();
             foreach (int index in filteredIndices)
             {
-                if (IOU(boxes.get(bestIndex, 0), boxes.get(index, 0)) > nmsThreshold)
+                if (_IOU(boxes.get(bestIndex, 0), boxes.get(index, 0)) > nmsThreshold)
                 {
                     toRemove.Add(index);
                 }
@@ -357,7 +317,8 @@ public class MediaPipePalmDetector
         indices.fromList(finalIndices);
     }
 
-    private static float IOU(double[] boxA, double[] boxB)
+    // Helper function, intersection over union
+    private float _IOU(double[] boxA, double[] boxB)
     {
         int x1 = System.Math.Max((int)boxA[0], (int)boxB[0]);
         int y1 = System.Math.Max((int)boxA[1], (int)boxB[1]);
@@ -372,8 +333,13 @@ public class MediaPipePalmDetector
         return (float)interArea / (boxAArea + boxBArea - interArea);
     }
 
-    public void visualize(Texture2D texture, Mat mat, int width, int height)
+    // Function to visualize bounding box and palm landmarks
+    public void visualize(Texture2D image, Mat mat, int width, int height, Renderer renderer)
     {
+        Texture2D debugTex = new Texture2D(image.width, image.height, image.format, false);
+        debugTex.SetPixels(image.GetPixels());
+        debugTex.Apply();
+
         float[] values = new float[mat.rows() * mat.cols()];
         mat.get(0, 0, values);
         Vector2[] normalizedPoints = new Vector2[values.Length / 2];
@@ -385,23 +351,23 @@ public class MediaPipePalmDetector
             // Normalize x and y
             normalizedPoints[i] = new Vector2(x * width, y * height);
         }
-        Color[] pixels = texture.GetPixels();
+        Color[] pixels = debugTex.GetPixels();
 
         // Draw each point on the texture
         for (int i = 2; i < normalizedPoints.Length; i++)
         {
-            int x = Mathf.Clamp(Mathf.RoundToInt(normalizedPoints[i].x), 0, texture.width - 1);
-            int y = Mathf.Clamp(Mathf.RoundToInt(height - normalizedPoints[i].y), 0, texture.height - 1);
-            pixels[y * texture.width + x] = Color.green; // Set color at the point
+            int x = Mathf.Clamp(Mathf.RoundToInt(normalizedPoints[i].x), 0, debugTex.width - 1);
+            int y = Mathf.Clamp(Mathf.RoundToInt(height - normalizedPoints[i].y), 0, debugTex.height - 1);
+            pixels[y * debugTex.width + x] = Color.green; // Set color at the point
         }
 
         Vector2 p1 = normalizedPoints[0];
         Vector2 p2 = normalizedPoints[1];
 
-        int x1 = Mathf.Clamp(Mathf.RoundToInt(p1.x), 0, texture.width - 1);
-        int y1 = Mathf.Clamp(Mathf.RoundToInt(height - p1.y), 0, texture.height - 1);
-        int x2 = Mathf.Clamp(Mathf.RoundToInt(p2.x), 0, texture.width - 1);
-        int y2 = Mathf.Clamp(Mathf.RoundToInt(height - p2.y), 0, texture.height - 1);
+        int x1 = Mathf.Clamp(Mathf.RoundToInt(p1.x), 0, debugTex.width - 1);
+        int y1 = Mathf.Clamp(Mathf.RoundToInt(height - p1.y), 0, debugTex.height - 1);
+        int x2 = Mathf.Clamp(Mathf.RoundToInt(p2.x), 0, debugTex.width - 1);
+        int y2 = Mathf.Clamp(Mathf.RoundToInt(height - p2.y), 0, debugTex.height - 1);
 
         // Ensure x1 <= x2 and y1 <= y2
         int minX = Mathf.Min(x1, x2);
@@ -412,20 +378,22 @@ public class MediaPipePalmDetector
         // Draw horizontal lines
         for (int x = minX; x <= maxX; x++)
         {
-            pixels[minY * texture.width + x] = Color.red; // Top edge
-            pixels[maxY * texture.width + x] = Color.red; // Bottom edge
+            pixels[minY * debugTex.width + x] = Color.red; // Top edge
+            pixels[maxY * debugTex.width + x] = Color.red; // Bottom edge
         }
 
         // Draw vertical lines
         for (int y = minY; y <= maxY; y++)
         {
-            pixels[y * texture.width + minX] = Color.red; // Left edge
-            pixels[y * texture.width + maxX] = Color.red; // Right edge
+            pixels[y * debugTex.width + minX] = Color.red; // Left edge
+            pixels[y * debugTex.width + maxX] = Color.red; // Right edge
         }
 
         // Apply changes to the texture
-        texture.SetPixels(pixels);
-        texture.Apply();
+        debugTex.SetPixels(pixels);
+        debugTex.Apply();
+
+        renderer.sharedMaterial.mainTexture = debugTex;
     }
 
     public void Destroy()
@@ -436,6 +404,8 @@ public class MediaPipePalmDetector
         }
     }
 
+    // From EnoxSoftware's OpenCVForUnity HandPoseEstimationMediaPipeExample
+    // Reference: https://github.com/EnoxSoftware/OpenCVForUnity/blob/master/Assets/OpenCVForUnity/Examples
     protected virtual Mat load_anchors()
     {
         Mat anchors = new Mat(2016, 2, CvType.CV_32FC1);

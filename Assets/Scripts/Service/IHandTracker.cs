@@ -1,4 +1,4 @@
-
+using OpenCVForUnity.CoreModule;
 using RealityCollective.ServiceFramework.Interfaces;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -8,7 +8,6 @@ namespace HandTracking.Interfaces
 {
     public interface IHandTracker : IService
     {
-        Texture2D preprocess(Texture2D texture);
-        Task<int> DetectPalms(Texture2D texture, Renderer renderer);
+        Task<Mat> DetectPalms(Texture2D texture);
     }
 }
