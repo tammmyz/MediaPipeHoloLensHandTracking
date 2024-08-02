@@ -6,7 +6,6 @@ using UnityEngine;
 using Unity.Sentis;
 using OpenCVRange = OpenCVForUnity.CoreModule.Range;
 using Rect = OpenCVForUnity.CoreModule.Rect;
-using URect = UnityEngine.Rect;
 
 /// <summary>
 /// Referring to EnoxSoftware/OpenCVForUnity HandPoseEstimationMediaPipeExample:
@@ -59,6 +58,8 @@ public class MediaPipePalmDetector
         // Post-process model outputs
         Mat detectedPalms = Postprocess(outputBlob);
 
+        //Object.Destroy(processedTexture);
+
         return detectedPalms;
     }
 
@@ -67,7 +68,7 @@ public class MediaPipePalmDetector
     {
         // Render original texture before processing
         r1.material.mainTexture = handTexture;
-        Debug.Log($"webCamTexture (w,h): {handTexture.width}, {handTexture.height}");
+        //Debug.Log($"webCamTexture (w,h): {handTexture.width}, {handTexture.height}");
 
         // Pre-process texture for model
         var processedTexture = Preprocess(handTexture);

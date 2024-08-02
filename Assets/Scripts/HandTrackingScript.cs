@@ -17,16 +17,18 @@ public class HandTrackingScript : MonoBehaviour
     [SerializeField]
     private int cameraFPS = 4;
 
-    [SerializeField]
-    private Vector2Int handImageSize = new(192, 108);
-
-    private int inputSize = 192;
     private Vector2Int actualCameraSize;
 
     private WebCamTexture webCamTexture;
 
     [SerializeField]
     private Renderer debugRenderer;
+
+    [SerializeField]
+    private Renderer debugRenderer1;
+
+    [SerializeField]
+    private Renderer debugRenderer2;
 
     [SerializeField]
     private Renderer textureDebugger;
@@ -42,39 +44,33 @@ public class HandTrackingScript : MonoBehaviour
     private async Task StartTrackingHandAsync()
     {
         await Task.Delay(1000);
-        Debug.Log("Start StartTrackingHandAsync");
-
+        //Debug.Log("Start StartTrackingHandAsync");
         actualCameraSize = new Vector2Int(webCamTexture.width, webCamTexture.height);
-        handImageSize = getHandImageSize(webCamTexture.width, webCamTexture.height);
-        var renderTexture = new RenderTexture(handImageSize.x, handImageSize.y, 24);
+        var renderTexture = new RenderTexture(actualCameraSize.x, actualCameraSize.y, 24);
+
         if (debugRenderer != null && debugRenderer.gameObject.activeInHierarchy)
         {
             debugRenderer.material.mainTexture = renderTexture;
         }
         while (true)
         {
-            Debug.Log("doing while loop");
             Graphics.Blit(webCamTexture, renderTexture);
-            Debug.Log("graphics blit");
             await Task.Delay(32);
 
             var texture = ToTexture2D(renderTexture);
+
             await Task.Delay(32);
 
-            Debug.Log("to texture 2d");
-            textureDebugger.material.mainTexture = preprocess(texture);
-            Debug.Log("detected palm");
+            var palms = await handtracker.DetectPalms(texture);
+            for (int i = 0; i < palms.rows(); i++)
+            {
+                var handPose = await handtracker.EstimateHandPose(texture, palms.row(0), debugRenderer1, debugRenderer2);
+                var json = handtracker.jointToJSON(i, lastLineEnd:"");
+                Debug.Log($"{json}");
+            }
 
-            Destroy(texture);
+        Destroy(texture);
         }
-    }
-
-    private Vector2Int getHandImageSize(int actualCameraWidth, int actualCameraHeight)
-    {
-        // Scale image to fit input size of the model
-        int newHeight = inputSize * actualCameraHeight / actualCameraWidth;
-        handImageSize = new(inputSize, newHeight);
-        return handImageSize;
     }
 
     private Texture2D ToTexture2D(RenderTexture rTex)
@@ -89,25 +85,5 @@ public class HandTrackingScript : MonoBehaviour
 
         RenderTexture.active = oldRt;
         return tex;
-    }
-
-    private Texture2D preprocess(Texture2D tex)
-    {
-        // Pad image to make square
-        int maxSize = Mathf.Max(tex.width, tex.height);
-        int offsetX = (maxSize - tex.width) / 2;
-        int offsetY = (maxSize - tex.height) / 2;
-        Debug.Log("Max: " + maxSize.ToString()
-            + "\tOffsetX: " + offsetX.ToString()
-            + "\tOffsety: " + offsetY.ToString());
-
-        Texture2D paddedTex = new Texture2D(maxSize, maxSize, TextureFormat.ARGB32, false);
-        Color[] texPixels = tex.GetPixels();
-        paddedTex.SetPixels(offsetX, offsetY, tex.width, tex.height, texPixels);
-        paddedTex.Apply();
-
-        RenderTexture.active = null;
-
-        return paddedTex;
     }
 }

@@ -1,11 +1,11 @@
 using OpenCVForUnity.CoreModule;
 using OpenCVForUnity.ImgprocModule;
 using OpenCVForUnity.UnityUtils;
-using Unity.Sentis;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using TextureProcUtils;
+using Unity.Sentis;
 using UnityEngine;
 using OpenCVRange = OpenCVForUnity.CoreModule.Range;
 using OpenCVRect = OpenCVForUnity.CoreModule.Rect;
@@ -79,6 +79,9 @@ public class MediaPipeHandPoseEstimator
     {
         r1.sharedMaterial.mainTexture = handTexture;
 
+        //Texture2D inputTexture = new Texture2D(handTexture.width, handTexture.height, TextureFormat.RGB24, false);
+        //Graphics.CopyTexture(handTexture, inputTexture);
+
         // Initialize variables for processing steps
         Mat rotated_palm_bbox;
         double angle;
@@ -90,19 +93,24 @@ public class MediaPipeHandPoseEstimator
         // Pre-process texture for model
         Texture2D paddedHandTex = TexProcUtils.pad(handTexture);
         Mat handMat = _texture2DToMat(paddedHandTex);
-        Debug.Log($"handMat: {handMat.size()}");
+        //Debug.Log($"handMat: {handMat.size()}");
         var processedTexture = Preprocess(handMat, detectedPalms, out rotated_palm_bbox, out angle, out rotation_matrix);
         r2.sharedMaterial.mainTexture = processedTexture;
-        Debug.Log($"processedTexture (w,h): {processedTexture.width}, {processedTexture.height}");
+        //Debug.Log($"processedTexture (w,h): {processedTexture.width}, {processedTexture.height}");
         var resizedTexture = TexProcUtils.resize(processedTexture, (int)input_size.width, (int)input_size.height);
-        Debug.Log($"resizedTexture (w,h): {resizedTexture.width}, {resizedTexture.height}");
+
+        //UnityEngine.Object.Destroy(processedTexture);
+        //handMat.Dispose();
+        //Debug.Log($"resizedTexture (w,h): {resizedTexture.width}, {resizedTexture.height}");
 
         // Run model inference
         var outputBlob = await EstimateHandPose(resizedTexture);
         await Task.Delay(32);
+        Debug.Log($"outputBlob: {outputBlob[0].size()}");
 
         // Post-process model outputs
         Mat handPose = Postprocess(outputBlob, rotated_palm_bbox, angle, rotation_matrix, pad_bias);
+        Debug.Log("finished post processing");
 
         return handPose;
     }
@@ -270,10 +278,13 @@ public class MediaPipeHandPoseEstimator
         // Create input tensor from Texture2D image
         TensorFloat inputTensor = TextureConverter.ToTensor(texture);
         inputTensor.MakeReadable();
+        //var shape = inputTensor.shape;
+        //Debug.Log($"input tensor shape: [{string.Join(',', shape)}]");
         await Task.Delay(32);
 
         // Run model inference
         var outputData = await ForwardAsync(worker, inputTensor);
+        //Debug.Log($"outputData: [{string.Join(',', outputData.outputs[0])}]");
         inputTensor.Dispose();
         await Task.Delay(32);
 

@@ -16,5 +16,13 @@ namespace HandTracking
         [SerializeField]
         private ModelAsset handPoseEstimatorAsset;
         public ModelAsset HandPoseEstimatorAsset => handPoseEstimatorAsset;
+
+        [SerializeField]
+        private Renderer debugger1;
+        public Renderer Debugger1 => debugger1;
+
+        [SerializeField]
+        private Renderer debugger2;
+        public Renderer Debugger2 => debugger2;
     }
 }
