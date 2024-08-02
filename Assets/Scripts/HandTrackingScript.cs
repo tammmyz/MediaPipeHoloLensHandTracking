@@ -1,11 +1,8 @@
 using HandTracking.Interfaces;
 using RealityCollective.ServiceFramework.Services;
-using System.Collections;
-using System.Collections.Generic;
+using System;
 using System.Threading.Tasks;
-using Unity.Sentis;
 using UnityEngine;
-using UnityEngine.XR.ARSubsystems;
 
 public class HandTrackingScript : MonoBehaviour
 {
@@ -33,16 +30,23 @@ public class HandTrackingScript : MonoBehaviour
     [SerializeField]
     private Renderer textureDebugger;
 
+    JointExporter jointExporter;
+
     void Start()
     {
         handtracker = ServiceManager.Instance.GetService<IHandTracker>();
         webCamTexture = new WebCamTexture(requestedCameraSize.x, requestedCameraSize.y, cameraFPS);
         webCamTexture.Play();
+        jointExporter = new JointExporter("test");
+        var time = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ssZ");
+        var startTime = handtracker.attributeToJSON("startTime", time, "\n");
+        jointExporter.appendToFile(startTime);
         StartTrackingHandAsync();
     }
 
     private async Task StartTrackingHandAsync()
     {
+        int count = 0;
         await Task.Delay(1000);
         //Debug.Log("Start StartTrackingHandAsync");
         actualCameraSize = new Vector2Int(webCamTexture.width, webCamTexture.height);
@@ -65,10 +69,11 @@ public class HandTrackingScript : MonoBehaviour
             for (int i = 0; i < palms.rows(); i++)
             {
                 var handPose = await handtracker.EstimateHandPose(texture, palms.row(0), debugRenderer1, debugRenderer2);
-                var json = handtracker.jointToJSON(i, lastLineEnd:"");
-                Debug.Log($"{json}");
+                var joint = handtracker.jointToJSON(count);
+                jointExporter.appendToFile(joint);
+                Debug.Log($"{joint}");
             }
-
+            count++;
         Destroy(texture);
         }
     }
@@ -85,5 +90,10 @@ public class HandTrackingScript : MonoBehaviour
 
         RenderTexture.active = oldRt;
         return tex;
+    }
+
+    public void OnDestroy()
+    {
+        jointExporter.Dispose();
     }
 }

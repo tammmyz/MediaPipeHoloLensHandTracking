@@ -106,11 +106,11 @@ public class MediaPipeHandPoseEstimator
         // Run model inference
         var outputBlob = await EstimateHandPose(resizedTexture);
         await Task.Delay(32);
-        Debug.Log($"outputBlob: {outputBlob[0].size()}");
+        //Debug.Log($"outputBlob: {outputBlob[0].size()}");
 
         // Post-process model outputs
         Mat handPose = Postprocess(outputBlob, rotated_palm_bbox, angle, rotation_matrix, pad_bias);
-        Debug.Log("finished post processing");
+        //Debug.Log("finished post processing");
 
         return handPose;
     }

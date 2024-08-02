@@ -2,7 +2,6 @@ using HandTracking.Interfaces;
 using OpenCVForUnity.CoreModule;
 using RealityCollective.ServiceFramework.Services;
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -23,7 +22,7 @@ namespace HandTracking
         public Vector3 wristPos;
 
         private static int WORLD_LANDMARK_INDEX = 67;
-        private static int NUM_JOINTS = 3;
+        private static int NUM_JOINTS = 4;
         private int WRIST_POS_INDEX = WORLD_LANDMARK_INDEX + 0;
         private int THUMB_BASE_POS_INDEX = WORLD_LANDMARK_INDEX + 1 * 3;
         private int INDEX_BASE_POS_INDEX = WORLD_LANDMARK_INDEX + 5 * 3;
@@ -74,7 +73,7 @@ namespace HandTracking
         {
             var handPose = await handPoseEstimator.StartAsyncDebug(handTexture, detectedPalms, d1, d2);
             await Task.Delay(32);
-            Debug.Log($"hand pose: {handPose.size()} {handPose.rows()}  {handPose.dump()}");
+            //Debug.Log($"hand pose: {handPose.size()} {handPose.rows()}  {handPose.dump()}");
             if (handPose.rows() > 0)
             {
                 storeHandPose(handPose);
@@ -110,13 +109,18 @@ namespace HandTracking
 
         private void storeHandPose(Mat handPose)
         {
-            //Debug.Log($"storing hand pose, {handPose.get(1, 0)[0]}");
+            Debug.Log($"storing hand pose, {handPose.get(1, 0)[0]}");
             wristPos = mat2Vector3(handPose, WRIST_POS_INDEX);
             thumbPos = mat2Vector3Array(handPose, THUMB_BASE_POS_INDEX, NUM_JOINTS);
+            Debug.Log("thumb");
             indexPos = mat2Vector3Array(handPose, INDEX_BASE_POS_INDEX, NUM_JOINTS);
+            Debug.Log("index");
             middlePos = mat2Vector3Array(handPose, MIDDLE_BASE_POS_INDEX, NUM_JOINTS);
+            Debug.Log("middle");
             ringPos = mat2Vector3Array(handPose, RING_BASE_POS_INDEX, NUM_JOINTS);
+            Debug.Log("ring");
             pinkyPos = mat2Vector3Array(handPose, PINKY_BASE_POS_INDEX, NUM_JOINTS);
+            Debug.Log("pinky");
         }
 
         private Vector3 mat2Vector3(Mat mat, int startIndex)
@@ -131,11 +135,14 @@ namespace HandTracking
 
         private Vector3[] mat2Vector3Array(Mat mat, int startIndex, int N)
         {
+            //Debug.Log($"mat value: {mat.get(startIndex, 0)[0]}  {mat.get(startIndex + 1, 0)[0]}  {mat.get(startIndex + 2, 0)[0]}");
             Vector3[] vec3array = new Vector3[N];
             for (int i = 0; i < N; i++) 
             {
-                vec3array[i] = mat2Vector3(mat, startIndex + i * N);
+                //Debug.Log($"i: {i}]tstartIndex + i * N: {startIndex + i * 3}");
+                vec3array[i] = mat2Vector3(mat, startIndex + i * 3);
             }
+            //Debug.Log($"vec3array: {vec3array[0]}  {vec3array[1]}  {vec3array[2]}");
             return vec3array;
         }
 
