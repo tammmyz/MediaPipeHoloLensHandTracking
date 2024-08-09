@@ -748,7 +748,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1300976321}
-  - component: {fileID: 1300976320}
+  - component: {fileID: 1300976322}
   m_Layer: 0
   m_Name: HandTrackingController
   m_TagString: Untagged
@@ -756,24 +756,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1300976320
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1300976319}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 666d31d8bf2a8804fb24f91d274c4f69, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  requestedCameraSize: {x: 896, y: 504}
-  cameraFPS: 4
-  debugRenderer: {fileID: 1266429016}
-  debugRenderer1: {fileID: 2057744277}
-  debugRenderer2: {fileID: 1705172220}
-  textureDebugger: {fileID: 1266429016}
 --- !u!4 &1300976321
 Transform:
   m_ObjectHideFlags: 0
@@ -792,6 +774,23 @@ Transform:
   - {fileID: 1266429019}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1300976322
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1300976319}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 962d5b1ffb903ff43bef2c22a18f0d7f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  requestedCameraSize: {x: 896, y: 504}
+  cameraFPS: 4
+  debugRenderer: {fileID: 1266429016}
+  debugRenderer1: {fileID: 2057744277}
+  debugRenderer2: {fileID: 1705172220}
 --- !u!1 &1705172219
 GameObject:
   m_ObjectHideFlags: 0

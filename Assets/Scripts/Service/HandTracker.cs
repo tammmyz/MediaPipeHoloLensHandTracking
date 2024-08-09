@@ -21,6 +21,8 @@ namespace HandTracking
         public Vector3[] pinkyPos;
         public Vector3 wristPos;
 
+        public string palm;
+
         private static int WORLD_LANDMARK_INDEX = 67;
         private static int NUM_JOINTS = 4;
         private int WRIST_POS_INDEX = WORLD_LANDMARK_INDEX + 0;
@@ -66,7 +68,7 @@ namespace HandTracking
             await Task.Delay(32);
             if (handPose.rows() > 0)
             {
-                Debug.Log($"hand pose: {handPose.size()}");
+                //Debug.Log($"hand pose: {handPose.size()}");
                 storeHandPose(handPose);
             }
             return handPose;
@@ -76,7 +78,7 @@ namespace HandTracking
         {
             var handPose = await handPoseEstimator.StartAsyncDebug(handTexture, detectedPalms, d1, d2);
             await Task.Delay(32);
-            Debug.Log($"hand pose: {handPose.size()} {handPose.rows()}  {handPose.dump()}");
+            //Debug.Log($"hand pose: {handPose.size()} {handPose.rows()}  {handPose.dump()}");
             if (handPose.rows() > 0)
             {
                 storeHandPose(handPose);
@@ -107,6 +109,12 @@ namespace HandTracking
             }
             export += $"{indent}{indent}\"timestamp\": \"{timestamp}\"\n";
             export += $"{indent}}}";
+            return export;
+        }
+
+        public string palmToJSON(int i, Mat palm, string lastLineEnd = ",\n")
+        {
+            string export = $"{lastLineEnd}{indent}\"{i}\": \"{palm.dump()}\"\n";
             return export;
         }
 

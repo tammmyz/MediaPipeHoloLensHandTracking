@@ -4,7 +4,7 @@ using System;
 using System.Threading.Tasks;
 using UnityEngine;
 
-public class HandTrackingScript : MonoBehaviour
+public class TestPalmExporter : MonoBehaviour
 {
     private IHandTracker handtracker;
 
@@ -34,7 +34,7 @@ public class HandTrackingScript : MonoBehaviour
         handtracker = ServiceManager.Instance.GetService<IHandTracker>();
         webCamTexture = new WebCamTexture(requestedCameraSize.x, requestedCameraSize.y, cameraFPS);
         webCamTexture.Play();
-        jointExporter = new JointExporter("test");
+        jointExporter = new JointExporter("palm");
         var time = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ssZ");
         var startTime = handtracker.attributeToJSON("startTime", time, "\n");
         jointExporter.appendToFile(startTime);
@@ -63,13 +63,14 @@ public class HandTrackingScript : MonoBehaviour
             await Task.Delay(32);
 
             var palms = await handtracker.DetectPalms(texture);
+            
             for (int i = 0; i < palms.rows(); i++)
             {
-                var handPose = await handtracker.EstimateHandPose(texture, palms.row(0), debugRenderer1, debugRenderer2);
-                var joint = handtracker.jointToJSON(count);
-                jointExporter.appendToFile(joint);
-                Debug.Log($"{joint}");
+                var palm = handtracker.palmToJSON(count, palms.row(i));
+                jointExporter.appendToFile(palm);
+                Debug.Log($"{palm}");
             }
+
             count++;
         Destroy(texture);
         }
