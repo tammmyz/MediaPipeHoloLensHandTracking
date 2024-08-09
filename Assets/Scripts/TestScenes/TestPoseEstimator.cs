@@ -1,7 +1,5 @@
-using HandTracking.Interfaces;
 using TextureProcUtils;
 using Unity.Sentis;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class TestPoseEstimator : MonoBehaviour

@@ -64,8 +64,11 @@ namespace HandTracking
         {
             var handPose = await handPoseEstimator.StartAsync(handTexture, detectedPalms);
             await Task.Delay(32);
-            Debug.Log($"hand pose: {handPose.size()} {handPose.dump()}");
-            storeHandPose(handPose);
+            if (handPose.rows() > 0)
+            {
+                Debug.Log($"hand pose: {handPose.size()}");
+                storeHandPose(handPose);
+            }
             return handPose;
         }
 
@@ -73,7 +76,7 @@ namespace HandTracking
         {
             var handPose = await handPoseEstimator.StartAsyncDebug(handTexture, detectedPalms, d1, d2);
             await Task.Delay(32);
-            //Debug.Log($"hand pose: {handPose.size()} {handPose.rows()}  {handPose.dump()}");
+            Debug.Log($"hand pose: {handPose.size()} {handPose.rows()}  {handPose.dump()}");
             if (handPose.rows() > 0)
             {
                 storeHandPose(handPose);
@@ -109,18 +112,18 @@ namespace HandTracking
 
         private void storeHandPose(Mat handPose)
         {
-            Debug.Log($"storing hand pose, {handPose.get(1, 0)[0]}");
+            //Debug.Log($"storing hand pose, {handPose.get(1, 0)[0]}");
             wristPos = mat2Vector3(handPose, WRIST_POS_INDEX);
             thumbPos = mat2Vector3Array(handPose, THUMB_BASE_POS_INDEX, NUM_JOINTS);
-            Debug.Log("thumb");
+            //Debug.Log("thumb");
             indexPos = mat2Vector3Array(handPose, INDEX_BASE_POS_INDEX, NUM_JOINTS);
-            Debug.Log("index");
+            //Debug.Log("index");
             middlePos = mat2Vector3Array(handPose, MIDDLE_BASE_POS_INDEX, NUM_JOINTS);
-            Debug.Log("middle");
+            //Debug.Log("middle");
             ringPos = mat2Vector3Array(handPose, RING_BASE_POS_INDEX, NUM_JOINTS);
-            Debug.Log("ring");
+            //Debug.Log("ring");
             pinkyPos = mat2Vector3Array(handPose, PINKY_BASE_POS_INDEX, NUM_JOINTS);
-            Debug.Log("pinky");
+            //Debug.Log("pinky");
         }
 
         private Vector3 mat2Vector3(Mat mat, int startIndex)

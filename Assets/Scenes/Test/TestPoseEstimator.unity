@@ -466,7 +466,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9d441f903b1fa2545b139cb5cf7be2c8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  handTexture: {fileID: 2800000, guid: 2763a29401153dd40ba6266fa0ac7673, type: 3}
+  handTexture: {fileID: 2800000, guid: 1aea56d7562940241b4c4cb27392a572, type: 3}
   debugRenderer1: {fileID: 1505403045}
   debugRenderer2: {fileID: 2128364446}
   debugRenderer3: {fileID: 1372325879}
@@ -754,8 +754,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   requestedCameraSize: {x: 896, y: 504}
   cameraFPS: 4
-  handImageSize: {x: 320, y: 256}
   debugRenderer: {fileID: 2074062490}
+  debugRenderer1: {fileID: 0}
+  debugRenderer2: {fileID: 0}
   textureDebugger: {fileID: 1505403045}
 --- !u!1 &1372325877
 GameObject:
